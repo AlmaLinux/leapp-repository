@@ -13,13 +13,26 @@ VENDOR_SIGS = {
     'centos': ['24c6a8a7f4a80eb5',
                '05b555b38483c65d',
                '4eb84e71f2ee9d55'],
-    'cloudlinux': ['8c55a6628608cb71']
+    'cloudlinux': ['8c55a6628608cb71'],
+    'almalinux': ['51d6647ec21ad6ea',
+                  'd36cb86cb86b3716'],
+    'rocky': ['15af5dac6d745a60',
+              '702d426d350d275d'],
+    'ol': ['72f97b74ec551f03',
+           '82562ea9ad986da3',
+           'bc4d06a08d8b756f'],
+    'eurolinux': ['75c333f418cd4a9e',
+                  'b413acad6275f250',
+                  'f7ad3e5a1c9fd080']
 }
 
 VENDOR_PACKAGERS = {
     "rhel": "Red Hat, Inc.",
     "centos": "CentOS",
     "cloudlinux": "CloudLinux Packaging Team",
+    "almalinux": "AlmaLinux Packaging Team",
+    "rocky": "infrastructure@rockylinux.org",
+    "eurolinux": "EuroLinux",
 }
 
 
