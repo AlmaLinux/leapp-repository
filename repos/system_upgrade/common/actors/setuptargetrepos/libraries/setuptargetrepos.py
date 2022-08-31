@@ -59,9 +59,20 @@ def _get_used_repo_dict():
 
 
 def _setup_repomap_handler(src_repoids):
-    repo_mappig_msg = next(api.consume(RepositoriesMapping), RepositoriesMapping())
+    combined_mapping = []
+    combined_repositories = []
+    # Depending on whether there are any vendors present, we might get more than one message.
+    for msg in api.consume(RepositoriesMapping):
+        combined_mapping.extend(msg.mapping)
+        combined_repositories.extend(msg.repositories)
+
+    combined_repomapping = RepositoriesMapping(
+        mapping=combined_mapping,
+        repositories=combined_repositories
+    )
+
     rhui_info = next(api.consume(RHUIInfo), RHUIInfo(provider=''))
-    repomap = setuptargetrepos_repomap.RepoMapDataHandler(repo_mappig_msg, cloud_provider=rhui_info.provider)
+    repomap = setuptargetrepos_repomap.RepoMapDataHandler(combined_repomapping, cloud_provider=rhui_info.provider)
     # TODO(pstodulk): what about skip this completely and keep the default 'ga'..?
     default_channels = setuptargetrepos_repomap.get_default_repository_channels(repomap, src_repoids)
     repomap.set_default_channels(default_channels)
