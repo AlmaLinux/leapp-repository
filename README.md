@@ -112,6 +112,18 @@ The Leapp upgrade process uses information from the AlmaLinux PES (Package Evolu
 
 > **Warning**: leapp doesn't force packages from out_packageset to be installed from the specific repository; instead, it enables repo from out_packageset and then DNF installs the latest package version from all enabled repos.
 
+#### Creating event lists through PES
+
+The recommended way to create new event lists is to use the PES mechanism.
+
+The web interface can create, manage and export groups of events to JSON files.
+
+This video demonstration walks through the steps of adding an action event group and exporting it as a JSON file to make use of it in the elevation process.
+
+> https://drive.google.com/file/d/1VqnQkUsxzLijIqySMBGu5lDrA72BVd5A/view?usp=sharing
+
+Please refer to the [PES contribution guide](https://wiki.almalinux.org/elevate/Contribution-guide.html) for additional information on entry fields.
+
 #### Manual editing
 
 To add new rules to the list, add a new entry to the `packageinfo` array.
@@ -158,8 +170,6 @@ Required fields:
 
 For `in_packageset`, `repository` field defines the package repository the package was installed from on the source system.
 For `out_packageset`, `repository` field for packages should be the same as the "Target system repo name in PES" field in the associated vendor repository mapping file.
-
-Please refer to [PES contribution guide](https://wiki.almalinux.org/elevate/Contribution-guide.html) for additional information on entry fields.
 
 ### Providing the data
 
