@@ -1,10 +1,11 @@
 import os
 
-from leapp.libraries.stdlib import run
+from leapp.libraries.stdlib import run, api
 from leapp.actors import Actor
 from leapp.models import InstalledTargetKernelVersion, KernelCmdlineArg, FirmwareFacts, MountEntry
 from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
 from leapp.exceptions import StopActorExecutionError
+
 
 class EfiFinalizationFix(Actor):
     """
@@ -31,16 +32,22 @@ class EfiFinalizationFix(Actor):
                 'Rocky Linux': 'rocky'
         }
 
-        with open('/etc/system-release', 'r') as sr:
-                for line in sr:
-                        if 'release' in line:
-                                distro = line.split(' release ',1)[0]
+        efi_shimname_dict = {
+            'x86_64': 'shimx64.efi',
+            'aarch64': 'shimaa64.efi'
+        }
 
-        release = distro + " 8"
+        with open('/etc/system-release', 'r') as sr:
+            release_line = next(line for line in sr if 'release' in line)
+            distro, release = release_line.split(' release ', 1)
+
+        efi_bootentry_label = distro + " " + release
         distro_dir = dirname.get(distro, 'default')
-        shim_path = '/boot/efi/EFI/' + distro_dir + '/shimx64.efi'
-        grub_cfg_path =  '/boot/efi/EFI/' + distro_dir + '/grub.cfg'
-        bootmgr_path = '\\EFI\\' + distro_dir + '\\shimx64.efi'
+        shim_filename = efi_shimname_dict.get(api.current_actor().configuration.architecture, 'shimx64.efi')
+
+        shim_path = '/boot/efi/EFI/' + distro_dir + '/' + shim_filename
+        grub_cfg_path = '/boot/efi/EFI/' + distro_dir + '/grub.cfg'
+        bootmgr_path = '\\EFI\\' + distro_dir + '\\' + shim_filename
 
         has_efibootmgr = os.path.exists('/sbin/efibootmgr')
         has_shim = os.path.exists(shim_path)
@@ -61,8 +68,8 @@ class EfiFinalizationFix(Actor):
             with open('/proc/mounts', 'r') as fp:
                 for line in fp:
                     if '/boot/efi' in line:
-                        efidev = line.split(' ',1)[0]
-            run(['/sbin/efibootmgr', '-c', '-d', efidev, '-p 1', '-l', bootmgr_path, '-L', release])
+                        efidev = line.split(' ', 1)[0]
+            run(['/sbin/efibootmgr', '-c', '-d', efidev, '-p 1', '-l', bootmgr_path, '-L', efi_bootentry_label])
 
             if not has_grub_cfg:
-                    run(['/sbin/grub2-mkconfig', '-o', grub_cfg_path])
+                run(['/sbin/grub2-mkconfig', '-o', grub_cfg_path])
