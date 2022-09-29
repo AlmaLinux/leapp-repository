@@ -1,9 +1,9 @@
-# Leapp Elevation Repository
+# Leapp ELevate Repository
 
 **Before doing anything, please read [Leapp framework documentation](https://leapp.readthedocs.io/).**
 
 ## Running
-Make sure your system is fully updated before starting the elevation process.
+Make sure your system is fully updated before starting the upgrade process.
 
 ```bash
 sudo yum update -y
