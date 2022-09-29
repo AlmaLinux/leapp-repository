@@ -1,6 +1,61 @@
 # Leapp Elevation Repository
-**Before doing anything, please read
-[Leapp framework documentation](https://leapp.readthedocs.io/).**
+
+**Before doing anything, please read [Leapp framework documentation](https://leapp.readthedocs.io/).**
+
+## Running
+Make sure your system is fully updated before starting the elevation process.
+
+```bash
+sudo yum update -y
+```
+
+Install `elevate-release` package with the project repo and GPG key.
+
+`sudo yum install -y http://repo.almalinux.org/elevate/elevate-release-latest-el7.noarch.rpm`
+
+Install leapp packages and migration data for the OS you want to upgrade. Possible options are:
+  - leapp-data-almalinux
+  - leapp-data-centos
+  - leapp-data-eurolinux
+  - leapp-data-oraclelinux
+  - leapp-data-rocky
+
+`sudo yum install -y leapp-upgrade leapp-data-almalinux`
+
+Start a preupgrade check. In the meantime, the Leapp utility creates a special /var/log/leapp/leapp-report.txt file that contains possible problems and recommended solutions. No rpm packages will be installed at this phase.
+
+`sudo leapp preupgrade`
+
+The preupgrade process may stall with the following message:
+> Inhibitor: Newest installed kernel not in use
+
+Make sure your system is running the latest kernel before proceeding with the upgrade. If you updated the system recently, a reboot may be sufficient to do so. Otherwise, edit your Grub configuration accordingly.
+
+> NOTE: In certain configurations, Leapp generates `/var/log/leapp/answerfile` with true/false questions. Leapp utility requires answers to all these questions in order to proceed with the upgrade.
+
+Once the preupgrade process completes, the results will be contained in `/var/log/leapp/leapp-report.txt` file.
+It's advised to review the report and consider how the changes will affect your system.
+
+Start an upgrade. You’ll be offered to reboot the system after this process is completed.
+
+```bash
+sudo leapp upgrade
+sudo reboot
+```
+
+> NOTE: The upgrade process after the reboot may take a long time, up to 40-50 minutes, depending on the machine resources. If the machine remains unresponsive for more than 2 hours, assume the upgrade process failed during the post-reboot phase.
+> If it's still possible to access the machine in some way, for example, through remote VNC access, the logs containing the information on what went wrong are located in this folder: `/var/log/leapp`
+
+A new entry in GRUB called ELevate-Upgrade-Initramfs will appear. The system will be automatically booted into it. Observe the update process in the console.
+
+After the reboot, login into the system and check the migration report. Verify that the current OS is the one you need.
+
+```bash
+cat /etc/redhat-release
+cat /etc/os-release
+```
+
+Check the leapp logs for .rpmnew configuration files that may have been created during the upgrade process. In some cases os-release or yum package files may not be replaced automatically, requiring the user to rename the .rpmnew files manually.
 
 ## Troubleshooting
 
@@ -33,7 +88,7 @@ Then you may attach only the `leapp-logs.tgz` file.
 ### Where can I seek help?
 We’ll gladly answer your questions and lead you to through any troubles with the actor development.
 
-You can reach us at IRC: `#leapp` on freenode.
+You can reach the primary Leapp development team at IRC: `#leapp` on freenode.
 
 ## Third-party integration
 
@@ -177,3 +232,86 @@ Once you've prepared the vendor data for migration, you can make a pull request 
 Files should be placed into the `vendors.d` subfolder if the data should be available for all elevation target OS variants, or into the `files/<target_OS>/vendors.d/` if intended for a specific one.
 
 Alternatively, you can deploy the vendor files on a system prior to starting the upgrade. In this case, place the files into the folder `/etc/leapp/files/vendors.d/`.
+
+## Adding complex changes (custom actors for migration)
+To perform any changes of arbitrary complexity during the migration process, add a component to the existing Leapp pipeline.
+
+To begin, clone the code repository: https://github.com/AlmaLinux/leapp-repository
+For instructions on how to deploy a development enviroment, refer to [Leapp framework documentation](https://leapp.readthedocs.io/en/latest/devenv-install.html).
+
+Create an actor inside the main system_upgrade leapp repository:
+
+```bash
+cd ./leapp-repository/repos/system_upgrade/common
+snactor new-actor testactor
+```
+
+Alternatively, you can [create your own repository](https://leapp.readthedocs.io/en/latest/create-repository.html) in the system_upgrade folder, if you wish to keep your actors separate from others.
+Keep in mind that you’ll need to link all other repositories whose functions you will use.
+The created subfolder will contain the main Python file of your new actor.
+
+The actor’s main class has three fields of interest:
+- consumes
+- produces
+- tags
+
+consumes and produces defines the [data that the actor may receive or provide to other actors](https://leapp.readthedocs.io/en/latest/messaging.html).
+
+Tags define the phase of the upgrade process during which the actor runs.
+All actors also must be assigned the `IPUWorkflowTag` to mark them as a part of the in-place upgrade process.
+The file `leapp-repository/repos/system_upgrade/common/workflows/inplace_upgrade.py` lists all phases of the elevation process.
+
+### Submitting changes
+Changes you want to submit upstream should be sent through pull requests to repositories https://github.com/AlmaLinux/leapp-repository and https://github.com/AlmaLinux/leapp-data.
+The standard GitHub contribution process applies - fork the repository, make your changes inside of it, then submit the pull request to be reviewed.
+
+### Example
+Suppose you would like to create an actor to copy a pre-supplied repository file into the upgraded system’s /etc/yum.repos.d.
+
+First, you would create the new actor:
+```
+cd ./leapp-repository/repos/system_upgrade/common
+snactor new-actor addcustomrepositories
+```
+
+Since you'd want to run this actor after the upgrade has successfully completed, you’d use the FirstBootPhase tag in its tags field.
+
+```python
+	tags = (IPUWorkflowTag, FirstBootPhaseTag)
+```
+
+If you wanted to ensure that the actor only runs on AlmaLinux systems, and not on any target OS variant, you could check the release name by importing the corresponding function from leapp API:
+
+```python
+from leapp.libraries.common.config import version
+
+	def process(self):
+					# We only want to run this actor on AlmaLinux systems.
+					# current_version returns a tuple (release_name, version_value).
+					if (version.current_version()[0] == "almalinux"):
+									copy_custom_repo_files()
+```
+
+Files that are accessible by all actors in the repository should be placed into the files/ subdirectory. For the main leapp repository, that directory has the path leapp-repository/repos/system_upgrade/common/files.
+
+Create the subfolder `custom-repos` to place repo files into, then finalize the actor’s code:
+
+```python
+import os
+import os.path
+import shutil
+
+from leapp.libraries.stdlib import api
+
+CUSTOM_REPOS_FOLDER = 'custom-repos'
+REPO_ROOT_PATH = "/etc/yum.repos.d"
+
+def copy_custom_repo_files():
+		custom_repo_dir = api.get_common_folder_path(CUSTOM_REPOS_FOLDER)
+
+		for repofile in os.listdir(custom_repo_dir):
+				full_repo_path = os.path.join(custom_repo_dir, repofile)
+				shutil.copy(full_repo_path, REPO_ROOT_PATH)
+```
+
+Refer to existing actors and [Leapp documentation](https://leapp.readthedocs.io/) to use more complex functionality in your actors.
