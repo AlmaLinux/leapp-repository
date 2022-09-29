@@ -39,9 +39,9 @@ class EfiFinalizationFix(Actor):
 
         with open('/etc/system-release', 'r') as sr:
             release_line = next(line for line in sr if 'release' in line)
-            distro, release = release_line.split(' release ', 1)
+            distro = release_line.split(' release ', 1)[0]
 
-        efi_bootentry_label = distro + " " + release
+        efi_bootentry_label = distro
         distro_dir = dirname.get(distro, 'default')
         shim_filename = efi_shimname_dict.get(api.current_actor().configuration.architecture, 'shimx64.efi')
 
