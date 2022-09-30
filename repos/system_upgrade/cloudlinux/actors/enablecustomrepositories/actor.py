@@ -5,6 +5,7 @@ import shutil
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
+from leapp.libraries.common.config import version
 
 CUSTOM_REPOS_FOLDER = 'custom-repos'
 REPO_ROOT_PATH = "/etc/yum.repos.d"
@@ -40,5 +41,6 @@ class EnableCustomRepositories(Actor):
             shutil.copy(full_repo_path, REPO_ROOT_PATH)
 
     def process(self):
-        self.rename_rpmnew()
-        self.add_custom()
+        if (version.current_version()[0] == "cloudlinux"):
+            self.rename_rpmnew()
+            self.add_custom()
