@@ -30,18 +30,17 @@ class CheckUp2dateConfig(Actor):
                 old_lines = o.readlines()
                 new_lines = n.readlines()
                 for l in old_lines:
-                    if 'serverURL=' in l and l not in new_lines:
+                    if l.startswith('serverURL=') and l not in new_lines:
                         replace = l
                         break
-            if replace:
-                for line in new_lines:
-                    if 'serverURL=' in line:
-                        line = replace
-                        self.log.warning('"serverURL" parameter will be saved as "%s"', line.strip())
-                        break
+                if replace:
+                    for i, line in enumerate(new_lines):
+                        if line.startswith('serverURL='):
+                            new_lines[i] = replace
+                            self.log.warning('"serverURL" parameter will be saved as "%s"', line.strip())
+                            break
             with open(self.original, 'w') as f:
                 f.writelines(new_lines)
-                f.flush()
                 self.log.info('"%s" config is overwritten by contents of the "%s"', self.original, self.new)
             os.unlink(self.new)
             self.log.info('"%s" config deleted', self.new)
