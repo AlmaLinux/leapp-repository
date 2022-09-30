@@ -13,7 +13,12 @@ def add_custom(log):
     # type: (logging.Logger) -> None
     custom_repo_dir = api.get_common_folder_path(CUSTOM_REPOS_FOLDER)
 
-    for repofile in os.listdir(custom_repo_dir):
+    repofiles = os.listdir(custom_repo_dir)
+    # If folder is empty, halt
+    if not repofiles:
+        return
+
+    for repofile in repofiles:
         full_repo_path = os.path.join(custom_repo_dir, repofile)
 
         log.debug("Copying repo file {} to {}".format(repofile, REPO_ROOT_PATH))
