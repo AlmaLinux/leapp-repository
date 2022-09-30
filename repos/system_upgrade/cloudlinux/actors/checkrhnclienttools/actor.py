@@ -19,25 +19,31 @@ class CheckRhnClientToolsVersion(Actor):
     produces = ()
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
-    minimal_version = Version('2.8.16')     # FIXME: actual patch is not released yet; should be 2.8.17 i guess
+    minimal_version = Version('2.0.2')
+    minimal_release_int = 43
+    minimal_release = '%s.el7.cloudlinux' % minimal_release_int
 
     def process(self):
         title, summary, remediation = None, None, None
-        # ex: Version      : 2.8.16
-        cmd = "yum info --installed rhn-client-tools | grep '^Version' | awk '{print $3}'"
+        # ex:
+        #   Version      : 2.0.2
+        #   Release      : 43.el7.cloudlinux
+        # res is: b'2.0.2\n43.el7.cloudlinux\n'
+        cmd = "yum info installed rhn-client-tools | grep '^Version' -A 1 | awk '{print $3}'"
         res = subprocess.check_output(cmd, shell=True)
-        self.log.info('Current rhn-client-tools version: "%s"', res)
+        rhn_version, rhn_release = res.decode().split()
+        self.log.info('Current rhn-client-tools version: "%s"', rhn_version)
         try:
-            current_version = Version(res.strip())
+            current_version = Version(rhn_version)
         except VersionParsingError:
             title = 'rhn-client-tools: package is not installed'
             summary = 'rhn-client-tools package is required to perform elevation.'
             remediation = 'Install rhn-client-tools "%s" version before running Leapp again.' % self.minimal_version
         else:
-            if current_version <= self.minimal_version:
+            if current_version < self.minimal_version or int(rhn_release.split('.')[0]) < self.minimal_release_int:
                 title = 'rhn-client-tools: package version is too low'
                 summary = 'Current version of the rhn-client-tools package has no capability to perform elevation.'
-                remediation = 'Update rhn-client-tools to "%s" version before running Leapp again.' % self.minimal_version
+                remediation = 'Update rhn-client-tools to "%s %s" version before running Leapp again.' % (self.minimal_version, self.minimal_release)
         if title:
             reporting.create_report([
                 reporting.Title(title),
