@@ -8,7 +8,7 @@ import os
 
 class CheckClLicense(Actor):
     """
-    Check does the server have CL license
+    Check if the server has a CL license
     """
 
     name = 'check_cl_license'
@@ -25,9 +25,10 @@ class CheckClLicense(Actor):
             res = run([self.rhn_check_bin])
             self.log.debug('rhn_check result: %s', res)
         if not res or res['exit_code'] != 0 or res['stderr']:
-            title = 'Server does not have active CL license'
-            summary = 'Server does not have active CL license.'
-            remediation = 'Activate CL license before running Leapp again.'
+            title = 'Server does not have an active CloudLinux license'
+            summary = 'Server does not have an active CloudLinux license. This renders key CloudLinux packages inaccessible, ' \
+                      'inhibiting the upgrade process.'
+            remediation = 'Activate a CloudLinux license on this machine before running Leapp again.'
             reporting.create_report([
                 reporting.Title(title),
                 reporting.Summary(summary),
