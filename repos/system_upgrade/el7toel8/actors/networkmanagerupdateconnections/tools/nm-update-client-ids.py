@@ -3,7 +3,13 @@ from __future__ import print_function
 import sys
 
 import gi
-gi.require_version('NM', '1.0')
+
+try:
+    gi.require_version('NM', '1.0')
+except ValueError:
+    # If we're missing NetworkManager-libnm, the script won't function.
+    sys.exit()
+
 from gi.repository import NM  # noqa: E402; pylint: disable=wrong-import-position
 
 
