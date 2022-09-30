@@ -6,6 +6,7 @@ from leapp.libraries.actor.addcustomrepositories import (
     add_custom,
 )
 
+
 class AddCustomRepositories(Actor):
     """
     Move the files inside the custom-repos folder of this leapp
@@ -17,8 +18,10 @@ class AddCustomRepositories(Actor):
     produces = ()
     tags = (IPUWorkflowTag, FirstBootPhaseTag)
 
+
     def process(self):
         # We only want to run this actor on CloudLinux systems.
         # current_version returns a tuple (release_name, version_value).
         if (version.current_version()[0] == "cloudlinux"):
+            self.log.debug(f"CloudLinux OS detected, {self.name} executing")
             add_custom()
