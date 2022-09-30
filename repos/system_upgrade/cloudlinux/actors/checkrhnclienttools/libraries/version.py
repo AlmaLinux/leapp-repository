@@ -1,4 +1,5 @@
-from future.utils import raise_from
+from six import reraise as raise_
+import sys
 
 
 class VersionException(Exception):
@@ -16,8 +17,9 @@ class Version(object):
             self.value = tuple(
                 map(lambda x: int(x), version.split('.'))
             )
-        except Exception as e:
-            raise_from(VersionParsingError('failed to parse version: "%s"' % self._raw), e)
+        except Exception:
+            tb = sys.exc_info()[2]
+            raise_(VersionParsingError, 'failed to parse version: "%s"' % self._raw, tb)
 
     def __eq__(self, other):
         return self.value == other.value
