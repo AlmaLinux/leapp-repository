@@ -1,8 +1,13 @@
 import os
 import os.path
+import shutil
 
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
+from leapp.libraries.stdlib import api
+
+CUSTOM_REPOS_FOLDER = 'custom-repos'
+REPO_ROOT_PATH = "/etc/yum.repos.d"
 
 
 class EnableCustomRepositories(Actor):
@@ -16,14 +21,24 @@ class EnableCustomRepositories(Actor):
     produces = ()
     tags = (IPUWorkflowTag, FirstBootPhaseTag)
 
-    def process(self):
-        root_path = "/etc/yum.repos.d"
-        for repofile in os.listdir(root_path):
+    def rename_rpmnew(self):
+        for repofile in os.listdir(REPO_ROOT_PATH):
             if repofile.endswith(".rpmnew"):
                 base_filename = repofile[:-7]  # Clear ".rpmnew" from name
-                new_repo_path = os.path.join(root_path, repofile)
-                base_repo_path = os.path.join(root_path, base_filename)
-                old_repo_path = os.path.join(root_path, base_filename + ".rpmsave")
+                new_repo_path = os.path.join(REPO_ROOT_PATH, repofile)
+                base_repo_path = os.path.join(REPO_ROOT_PATH, base_filename)
+                old_repo_path = os.path.join(REPO_ROOT_PATH, base_filename + ".rpmsave")
 
                 os.rename(base_repo_path, old_repo_path)
                 os.rename(new_repo_path, base_repo_path)
+
+    def add_custom(self):
+        custom_repo_dir = api.get_common_folder_path(CUSTOM_REPOS_FOLDER)
+
+        for repofile in os.listdir(custom_repo_dir):
+            full_repo_path = os.path.join(custom_repo_dir, repofile)
+            shutil.copy(full_repo_path, REPO_ROOT_PATH)
+
+    def process(self):
+        self.rename_rpmnew()
+        self.add_custom()
