@@ -2,6 +2,7 @@ from leapp.actors import Actor
 from leapp.libraries.actor import scancustomrepofile
 from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile, TargetSystemType
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
+from leapp.libraries.stdlib import api
 
 
 class ScanCustomRepofile(Actor):
@@ -24,4 +25,11 @@ class ScanCustomRepofile(Actor):
     tags = (FactsPhaseTag, IPUWorkflowTag)
 
     def process(self):
-        scancustomrepofile.process()
+        type_message = next(api.consume(TargetSystemType), None)
+        if not type_message:
+            api.current_logger().info(('The current configuration does not provide a target system type, assuming stable'))
+            target_type = "stable"
+        else:
+            target_type = type_message.system_type
+
+        scancustomrepofile.process(target_type)
