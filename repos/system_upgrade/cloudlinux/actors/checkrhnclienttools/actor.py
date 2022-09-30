@@ -26,6 +26,7 @@ class CheckRhnClientToolsVersion(Actor):
         # ex: Version      : 2.8.16
         cmd = "yum info --installed rhn-client-tools | grep '^Version' | awk '{print $3}'"
         res = subprocess.check_output(cmd, shell=True)
+        self.log.info('Current rhn-client-tools version: "%s"', res)
         try:
             current_version = Version(res.strip())
         except VersionParsingError:
