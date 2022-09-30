@@ -1,6 +1,6 @@
 from leapp.actors import Actor
 from leapp.libraries.actor import scancustomrepofile
-from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile
+from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile, TargetSystemType
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 
 
@@ -19,7 +19,7 @@ class ScanCustomRepofile(Actor):
     """
 
     name = 'scan_custom_repofile'
-    consumes = ()
+    consumes = (TargetSystemType)
     produces = (CustomTargetRepository, CustomTargetRepositoryFile)
     tags = (FactsPhaseTag, IPUWorkflowTag)
 

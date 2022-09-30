@@ -18,7 +18,6 @@ class AddCustomRepositories(Actor):
     produces = ()
     tags = (IPUWorkflowTag, FirstBootPhaseTag)
 
-
     def process(self):
         # We only want to run this actor on CloudLinux systems.
         # current_version returns a tuple (release_name, version_value).
