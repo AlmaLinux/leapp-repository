@@ -1,7 +1,0 @@
-﻿[cl]
-async = 1
-baseurl = https://koji.cloudlinux.com/cloudlinux/8.6/cloudlinux-x86_64-server-8/$basearch/os/
-enabled = 1
-gpgcheck = 1
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CloudLinux
-name = CloudLinux 8.6
