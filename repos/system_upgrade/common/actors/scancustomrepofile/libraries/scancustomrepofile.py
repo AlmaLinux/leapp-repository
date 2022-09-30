@@ -7,7 +7,6 @@ from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile
 
 CUSTOM_REPO_PATH = "/etc/leapp/files/leapp_upgrade_repositories.repo"
 CUSTOM_REPO_BETA_PATH = "/etc/leapp/files/leapp_upgrade_repositories_beta.repo"
-BETA_REPO_TAG = "testing"
 
 
 def process(target_type="stable"):
@@ -38,7 +37,7 @@ def process(target_type="stable"):
             "Beta target type, loading the auxillary custom repo file {}.".format(CUSTOM_REPO_BETA_PATH)
         )
 
-        beta_repofile = repofileutils.parse_repofile(CUSTOM_REPO_PATH)
+        beta_repofile = repofileutils.parse_repofile(CUSTOM_REPO_BETA_PATH)
         if not beta_repofile.data:
             api.current_logger().info(
                 "Beta repo file {} exists, but is empty. Nothing to do.".format(CUSTOM_REPO_BETA_PATH)

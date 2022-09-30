@@ -16,6 +16,11 @@ _REPODATA = [
     RepositoryData(repoid="repo4", name="repo4name", mirrorlist="mirror4list", enabled=True),
 ]
 
+_BETA_REPODATA = [
+    RepositoryData(repoid="repo1-testing", name="repo1-testing-name", baseurl="repo1url-t", enabled=True),
+    RepositoryData(repoid="repo2-testing", name="repo2-testing-name", baseurl="repo2url-t", enabled=False),
+]
+
 _CUSTOM_REPOS = [
     CustomTargetRepository(repoid="repo1", name="repo1name", baseurl="repo1url", enabled=True),
     CustomTargetRepository(repoid="repo2", name="repo2name", baseurl="repo2url", enabled=False),
@@ -23,29 +28,12 @@ _CUSTOM_REPOS = [
     CustomTargetRepository(repoid="repo4", name="repo4name", baseurl=None, enabled=True),
 ]
 
+_CUSTOM_BETA_REPOS = [
+    CustomTargetRepository(repoid="repo1-testing", name="repo1-testing-name", baseurl="repo1url-t", enabled=True),
+    CustomTargetRepository(repoid="repo2-testing", name="repo2-testing-name", baseurl="repo2url-t", enabled=False),
+]
+
 _CUSTOM_REPO_FILE_MSG = CustomTargetRepositoryFile(file=scancustomrepofile.CUSTOM_REPO_PATH)
-
-
-_TESTING_REPODATA = [
-    RepositoryData(repoid="repo1-stable", name="repo1name", baseurl="repo1url", enabled=True),
-    RepositoryData(repoid="repo2-testing", name="repo2name", baseurl="repo2url", enabled=False),
-    RepositoryData(repoid="repo3-stable", name="repo3name", enabled=False),
-    RepositoryData(repoid="repo4-testing", name="repo4name", mirrorlist="mirror4list", enabled=True),
-]
-
-_TESTING_CUSTOM_REPOS_STABLE_TARGET = [
-    CustomTargetRepository(repoid="repo1-stable", name="repo1name", baseurl="repo1url", enabled=True),
-    CustomTargetRepository(repoid="repo2-testing", name="repo2name", baseurl="repo2url", enabled=False),
-    CustomTargetRepository(repoid="repo3-stable", name="repo3name", baseurl=None, enabled=False),
-    CustomTargetRepository(repoid="repo4-testing", name="repo4name", baseurl=None, enabled=True),
-]
-
-_TESTING_CUSTOM_REPOS_BETA_TARGET = [
-    CustomTargetRepository(repoid="repo1-stable", name="repo1name", baseurl="repo1url", enabled=True),
-    CustomTargetRepository(repoid="repo2-testing", name="repo2name", baseurl="repo2url", enabled=True),
-    CustomTargetRepository(repoid="repo3-stable", name="repo3name", baseurl=None, enabled=False),
-    CustomTargetRepository(repoid="repo4-testing", name="repo4name", baseurl=None, enabled=True),
-]
 
 _PROCESS_STABLE_TARGET = "stable"
 _PROCESS_BETA_TARGET = "beta"
@@ -92,29 +80,26 @@ def test_valid_repofile_exists(monkeypatch):
         assert crepo in api.produce.model_instances
 
 
-def test_target_stable_repos(monkeypatch):
+def test_beta_repofile_exists(monkeypatch):
     def _mocked_parse_repofile(fpath):
-        return RepositoryFile(file=fpath, data=_TESTING_REPODATA)
+        if fpath == scancustomrepofile.CUSTOM_REPO_PATH:
+            return RepositoryFile(file=fpath, data=_REPODATA)
+        elif fpath == scancustomrepofile.CUSTOM_REPO_BETA_PATH:
+            return RepositoryFile(file=fpath, data=_BETA_REPODATA)
+
     monkeypatch.setattr(os.path, 'isfile', lambda dummy: True)
     monkeypatch.setattr(api, 'produce', produce_mocked())
     monkeypatch.setattr(repofileutils, 'parse_repofile', _mocked_parse_repofile)
-
-    scancustomrepofile.process(_PROCESS_STABLE_TARGET)
-    assert api.produce.called == len(_TESTING_CUSTOM_REPOS_STABLE_TARGET) + 1
-    for crepo in _TESTING_CUSTOM_REPOS_STABLE_TARGET:
-        assert crepo in api.produce.model_instances
-
-
-def test_target_beta_repos(monkeypatch):
-    def _mocked_parse_repofile(fpath):
-        return RepositoryFile(file=fpath, data=_TESTING_REPODATA)
-    monkeypatch.setattr(os.path, 'isfile', lambda dummy: True)
-    monkeypatch.setattr(api, 'produce', produce_mocked())
-    monkeypatch.setattr(repofileutils, 'parse_repofile', _mocked_parse_repofile)
+    monkeypatch.setattr(api, 'current_logger', LoggerMocked())
 
     scancustomrepofile.process(_PROCESS_BETA_TARGET)
-    assert api.produce.called == len(_TESTING_CUSTOM_REPOS_BETA_TARGET) + 1
-    for crepo in _TESTING_CUSTOM_REPOS_BETA_TARGET:
+    msg = "The {} file exists, custom repositories loaded.".format(scancustomrepofile.CUSTOM_REPO_PATH)
+    assert api.current_logger.infomsg == msg
+    assert api.produce.called == len(_CUSTOM_REPOS) + len(_CUSTOM_BETA_REPOS) + 1
+    assert _CUSTOM_REPO_FILE_MSG in api.produce.model_instances
+    for crepo in _CUSTOM_REPOS:
+        assert crepo in api.produce.model_instances
+    for crepo in _CUSTOM_BETA_REPOS:
         assert crepo in api.produce.model_instances
 
 
