@@ -1,6 +1,10 @@
 from leapp.actors import Actor
 from leapp.libraries.actor import scancustomrepofile
-from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile, TargetSystemType
+from leapp.models import (
+    CustomTargetRepository,
+    CustomTargetRepositoryFile,
+    TargetSystemType,
+)
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
 
@@ -19,15 +23,17 @@ class ScanCustomRepofile(Actor):
     If the file doesn't exist, nothing happens.
     """
 
-    name = 'scan_custom_repofile'
-    consumes = (TargetSystemType)
+    name = "scan_custom_repofile"
+    consumes = TargetSystemType
     produces = (CustomTargetRepository, CustomTargetRepositoryFile)
     tags = (FactsPhaseTag, IPUWorkflowTag)
 
     def process(self):
         type_message = next(api.consume(TargetSystemType), None)
         if not type_message:
-            api.current_logger().info(('The current configuration does not provide a target system type, assuming stable'))
+            api.current_logger().info((
+                "The current configuration does not provide a target system type, assuming stable"
+            ))
             target_type = "stable"
         else:
             target_type = type_message.system_type
