@@ -12,10 +12,10 @@ REPO_ROOT_PATH = "/etc/yum.repos.d"
 def add_custom(log):
     # type: (logging.Logger) -> None
     custom_repo_dir = api.get_common_folder_path(CUSTOM_REPOS_FOLDER)
-
     repofiles = os.listdir(custom_repo_dir)
-    # If folder is empty, halt
-    if not repofiles:
+
+    # If any components are missing, halt.
+    if not repofiles or not custom_repo_dir:
         return
 
     for repofile in repofiles:
