@@ -36,7 +36,7 @@ def is_hexstring(s):
 client = NM.Client.new(None)
 if not client:
     print("Cannot create NM client instance")
-    sys.exit(0)
+    sys.exit(79)
 
 processed = 0
 changed = 0
