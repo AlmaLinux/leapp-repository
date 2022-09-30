@@ -25,9 +25,9 @@ class CheckRhnClientToolsVersion(Actor):
         title, summary, remediation = None, None, None
         # ex: Version      : 2.8.16
         cmd = "yum info --installed rhn-client-tools | grep '^Version' | awk '{print $3}'"
-        res = subprocess.call(cmd, shell=True, text=True)
+        res = subprocess.check_output(cmd, shell=True)
         try:
-            current_version = Version(res)
+            current_version = Version(res.strip())
         except VersionParsingError:
             title = 'rhn-client-tools: package is not installed'
             summary = 'rhn-client-tools package is required to perform elevation.'
