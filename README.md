@@ -57,36 +57,61 @@ cat /etc/os-release
 
 Check the leapp logs for .rpmnew configuration files that may have been created during the upgrade process. In some cases os-release or yum package files may not be replaced automatically, requiring the user to rename the .rpmnew files manually.
 
-## Troubleshooting
+**Before doing anything, please read [Leapp framework documentation](https://leapp.readthedocs.io/).**
 
-### Where can I report an issue or RFE related to the framework or other actors?
+## Running
+Make sure your system is fully updated before starting the elevation process.
 
-- GitHub issues are preferred:
-  - Leapp framework: [https://github.com/oamg/leapp/issues/new/choose](https://github.com/oamg/leapp/issues/new/choose)
-  - Leapp actors: [https://github.com/oamg/leapp-repository/issues/new/choose](https://github.com/oamg/leapp-repository/issues/new/choose)
+Download and execute the preparation script: https://raw.githubusercontent.com/prilr/leapp-repository/cloudlinux/utils/cl_elevate_prepare.sh
 
-### Where can I report an issue or RFE related to the AlmaLinux actor or data modifications?
-- GitHub issues are preferred:
-  - Leapp actors: [https://github.com/AlmaLinux/leapp-repository/issues/new/choose](https://github.com/AlmaLinux/leapp-repository/issues/new/choose)
-  - Leapp data: [https://github.com/AlmaLinux/leapp-data/issues/new/choose](https://github.com/AlmaLinux/leapp-data/issues/new/choose)
+Start a preupgrade check. In the meantime, the Leapp utility creates a special /var/log/leapp/leapp-report.txt file that contains possible problems and recommended solutions. No rpm packages will be installed at this phase.
 
-### What data should be provided when making a report?
+`sudo leapp preupgrade`
 
-- When filing an issue, include:
-  - Steps to reproduce the issue
-  - *All files in /var/log/leapp*
-  - */var/lib/leapp/leapp.db*
-  - *journalctl*
-  - If you want, you can optionally send anything else would you like to provide (e.g. storage info)
+> NOTE: In certain configurations, Leapp generates `/var/log/leapp/answerfile` with true/false questions. Leapp utility requires answers to all these questions in order to proceed with the upgrade.
 
-**For your convenience you can pack all logs with this command:**
+The following three fixes from the /var/log/leapp/leapp-report.txt file are the most common ones you’ll see.
+They are mandatory to apply, but you should also review the rest of the report and consider how the changes will affect your system.
+
+```bash
+sudo rmmod pata_acpi floppy
+echo PermitRootLogin yes | sudo tee -a /etc/ssh/sshd_config
+sudo leapp answer --section remove_pam_pkcs11_module_check.confirm=True
+```
+
+Start an upgrade. You’ll be offered to reboot the system after this process is completed.
+
+```bash
+sudo leapp upgrade
+sudo reboot
+```
+
+A new entry in GRUB called ELevate-Upgrade-Initramfs will appear. The system will be automatically booted into it. See how the update process goes in the console.
+
+After reboot, login to the system and check how the migration went. Verify that the current OS is the one you need.
+
+```bash
+cat /etc/redhat-release
+cat /etc/os-release
+```
+
+Check the leapp logs for .rpmnew configuration files that may have been created during the upgrade process. In some cases os-release or yum package files may not be replaced automatically, requiring the user to rename the .rpmnew files manually.
+
+## How to gather debugging information and create issues
+If you encounter an unresolvable issue during an attempt to perform the system upgrade, all relevant information will be placed by leapp in the folder `/var/log/leapp/`.
+
+**You can pack all logs with this command:**
 
 `# tar -czf leapp-logs.tgz /var/log/leapp /var/lib/leapp/leapp.db`
 
 Then you may attach only the `leapp-logs.tgz` file.
 
-### Where can I seek help?
-We’ll gladly answer your questions and lead you to through any troubles with the actor development.
+When filing an issue, include:
+- Steps to reproduce the issue
+- *All files in /var/log/leapp*
+- */var/lib/leapp/leapp.db*
+- *journalctl*
+- If you want, you can optionally send anything else would you like to provide (e.g. storage info)
 
 You can reach the primary Leapp development team at IRC: `#leapp` on freenode.
 
@@ -106,15 +131,7 @@ All these files **must** have the same <vendor_name> part.
 
 This JSON file provides information on mappings between source system repositories (repositories present on the system being upgraded) and target system repositories (package repositories to be used during the upgrade).
 
-The file contains two sections, `mapping` and `repositories`.
-
-`repositories` descripes the source and target repositories themselves. Each entry should have a unique string ID specific to mapping/PES files - `pesid`, and a list of attributes:
-- major_version: major system version that this repository targets
-- repo_type: repository type, see below
-- repoid: repository ID, same as in *.repo files. Doesn't have to exactly match `pesid`
-- arch: system architecture for which this repository is relevant
-- channel: repository channel, see below
-
+The file contains two sections, `mapping` and `repositories`. `repositories` descripes the source and target repositories themselves, while `mapping` establishes connections between them.
 
 **Repository types**:
 - rpm: normal RPM packages
@@ -123,10 +140,10 @@ The file contains two sections, `mapping` and `repositories`.
 
 **Repository channels**:
 - ga: general availability repositories
-  - AKA stable repositories.
+- AKA stable repositories.
 - beta: beta-testing repositories
 - eus, e4s, aus, tus: Extended Update Support, Update Services for SAP Solutions, Advanced Update Support, Telco Extended Update Support
-  - Red Hat update channel classification. Most of the time you won't need to use these.
+- Red Hat update channel classification. Most of the time you won't need to use these.
 
 `mapping` establishes connections between described repositories.
 Each entry in the list defines a mapping between major system versions, and contains the following elements:
@@ -136,9 +153,6 @@ Each entry in the list defines a mapping between major system versions, and cont
   - source: source repository, one that would be found on a pre-upgrade system
   - target: a list of target upgrade repositores that would contain new package versions. Each source repository can map to one or multiple target repositories
 
-
-> **Important**: The repository mapping file also defines whether a vendor's packages will be included into the upgrade process at all.
-> If at least one source repository listed in the file is present on the system, the vendor is considered active, and package repositories/PES events are enabled - otherwise, they **will not** affect the upgrade process.
 
 ### Package repository information
 
