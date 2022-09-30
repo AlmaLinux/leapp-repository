@@ -1,6 +1,6 @@
 ﻿import pytest
 
-from leapp.libraries.actor.enablecustomrepositories import build_repo_paths
+from leapp.libraries.actor.enablerpmnewfiles import build_repo_paths
 
 
 def test_valid_architectures(monkeypatch):

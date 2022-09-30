@@ -2,21 +2,17 @@ from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.config import version
 
-from leapp.libraries.actor.enablecustomrepositories import (
-    rename_rpmnew,
+from leapp.libraries.actor.addcustomrepositories import (
     add_custom,
 )
 
-class EnableCustomRepositories(Actor):
+class AddCustomRepositories(Actor):
     """
-    On the upgraded target system, enable any present *.rpmnew repositories.
-    Old repository files are renamed to *.rpmsave, as directed by RPM rules.
-
-    After that's done, move the files inside the custom-repos folder of this leapp
+    Move the files inside the custom-repos folder of this leapp
     repository into the /etc/yum.repos.d repository.
     """
 
-    name = 'enable_custom_repositories'
+    name = 'add_custom_repositories'
     consumes = ()
     produces = ()
     tags = (IPUWorkflowTag, FirstBootPhaseTag)
@@ -25,5 +21,4 @@ class EnableCustomRepositories(Actor):
         # We only want to run this actor on CloudLinux systems.
         # current_version returns a tuple (release_name, version_value).
         if (version.current_version()[0] == "cloudlinux"):
-            rename_rpmnew()
             add_custom()

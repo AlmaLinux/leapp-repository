@@ -10,7 +10,7 @@ from leapp.libraries.common.config import version
 
 class ClearPackageConflicts(Actor):
     """
-    Remove files manually to resolve conflicts between versions of packages to be upgraded.
+    Remove several python package files manually to resolve conflicts between versions of packages to be upgraded.
     """
 
     name = 'clear_package_conflicts'
