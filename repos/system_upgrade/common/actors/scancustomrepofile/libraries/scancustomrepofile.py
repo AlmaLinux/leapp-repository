@@ -36,7 +36,7 @@ def process(target_type="stable"):
             api.current_logger().debug("Repo considered to be beta and enabled")
             repo.enabled = True
         else:
-            api.current_logger().debug("Repo processed as normal")
+            api.current_logger().debug("Repo processed as normal, enabled={}".format(repo.enabled))
 
         api.produce(CustomTargetRepository(
             repoid=repo.repoid,
