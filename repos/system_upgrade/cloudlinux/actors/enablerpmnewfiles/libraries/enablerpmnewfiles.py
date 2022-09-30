@@ -20,7 +20,7 @@ def rename_rpmnew(log):
         if repofile.endswith(".rpmnew"):
             base_path, old_path, new_path = build_repo_paths(repofile)
 
-            log.debug(f"Renaming {repofile} to {new_path}, old file moved to {old_path}")
+            log.debug("Renaming {} to {}, old file moved to {}".format(repofile, new_path, old_path))
 
             os.rename(base_path, old_path)
             os.rename(new_path, base_path)

@@ -16,6 +16,6 @@ def add_custom(log):
     for repofile in os.listdir(custom_repo_dir):
         full_repo_path = os.path.join(custom_repo_dir, repofile)
 
-        log.debug(f"Copying repo file {repofile} to {REPO_ROOT_PATH}")
+        log.debug("Copying repo file {} to {}".format(repofile, REPO_ROOT_PATH))
 
         shutil.copy(full_repo_path, REPO_ROOT_PATH)

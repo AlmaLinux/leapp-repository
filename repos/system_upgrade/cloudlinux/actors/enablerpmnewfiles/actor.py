@@ -22,5 +22,5 @@ class EnableRpmnewFiles(Actor):
         # We only want to run this actor on CloudLinux systems.
         # current_version returns a tuple (release_name, version_value).
         if (version.current_version()[0] == "cloudlinux"):
-            self.log.debug(f"CloudLinux OS detected, {self.name} executing")
+            self.log.debug("CloudLinux OS detected, {} executing".format(self.name))
             rename_rpmnew(self.log)
