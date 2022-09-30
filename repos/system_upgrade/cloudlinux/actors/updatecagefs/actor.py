@@ -28,7 +28,7 @@ class UpdateCagefs(Actor):
                 # cagefsctl prints errors in stdout
                 self.log.error(e.stdout)
                 self.log.error('Command "cagefsctl --force-update" finished with exit code {}, '
-                    'file system inside cagefs may by out-of-date.\n'
-                    'Check cagefsctl output above and /var/log/cagefs-update.log, '
+                    'the filesystem inside cagefs may be out-of-date.\n'
+                    'Check cagefsctl output above and in /var/log/cagefs-update.log, '
                     'rerun "cagefsctl --force-update" after fixing the issues.'.format(e.exit_code)
                 )
