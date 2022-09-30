@@ -13,7 +13,7 @@ yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/scancustom
 yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py /etc/leapp/repos.d/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py
 
 yes | cp -R /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.4 /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.6
-yes | cp -R /root/leapp-repository/repos/system_upgrade/cloudlinux /etc/leapp/repos.d/system_upgrade/system_upgrade/
+yes | cp -R /root/leapp-repository/repos/system_upgrade/cloudlinux /etc/leapp/repos.d/system_upgrade/cloudlinux
 
 git clone -b cloudlinux --single-branch https://github.com/prilr/leapp-data.git /root/leapp-data
 rsync -a /root/leapp-data/files/cloudlinux/ /etc/leapp/files/
