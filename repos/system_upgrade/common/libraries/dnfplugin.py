@@ -386,10 +386,10 @@ def _prepare_channel(context):
         with open(up2date_config, 'w') as f:
             f.writelines(config_data)
 
-        rhn_check_cmd = ['/usr/sbin/rhn_check']
-        update_release = ['yum', 'update', '-y', 'cloudlinux-release']
-        subprocess.call(rhn_check_cmd)
-        subprocess.call(update_release)
+        rhn_switch_cmd = ['/usr/sbin/cln-switch-channel', '-t 8', '-o']
+        yum_clean_cmd = ['yum', 'clean', 'all']
+        subprocess.call(rhn_switch_cmd)
+        subprocess.call(yum_clean_cmd)
     except OSError as e:
         api.current_logger().error('Could not call RHN command: Message: %s', str(e), exc_info=True)
 
