@@ -18,7 +18,7 @@ yes | cp -R /root/leapp-repository/repos/system_upgrade/cloudlinux /etc/leapp/re
 git clone -b cloudlinux --single-branch https://github.com/prilr/leapp-data.git /root/leapp-data
 rsync -a /root/leapp-data/files/cloudlinux/ /etc/leapp/files/
 
-rmmod floppy pata_acpi
+rmmod floppy pata_acpi btrfs
 echo PermitRootLogin yes | tee -a /etc/ssh/sshd_config
 leapp answer --add --section remove_pam_pkcs11_module_check.confirm=True
 leapp answer --add --section select_target_system_type.select=stable
