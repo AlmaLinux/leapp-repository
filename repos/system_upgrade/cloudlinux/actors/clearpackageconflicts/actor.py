@@ -6,7 +6,7 @@ from leapp.actors import Actor
 from leapp.libraries.common.rpms import has_package
 from leapp.models import InstalledRPM
 from leapp.tags import DownloadPhaseTag, IPUWorkflowTag
-from leapp.libraries.common.config import version
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 class ClearPackageConflicts(Actor):
     """
@@ -18,10 +18,8 @@ class ClearPackageConflicts(Actor):
     produces = ()
     tags = (DownloadPhaseTag.Before, IPUWorkflowTag)
 
+    @run_on_cloudlinux
     def process(self):
-        if (version.current_version()[0] != "cloudlinux"):
-            return
-
         problem_packages = ["alt-python37-six", "alt-python37-pytz"]
         problem_packages_installed = any([has_package(InstalledRPM, pkg) for pkg in problem_packages])
 

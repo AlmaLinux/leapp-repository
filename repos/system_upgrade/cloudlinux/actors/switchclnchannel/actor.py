@@ -2,7 +2,7 @@ from leapp.actors import Actor
 from leapp.libraries.stdlib import api
 from leapp.tags import DownloadPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import CalledProcessError, run
-from leapp.libraries.common.config import version
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 
 class SwitchClnChannel(Actor):
@@ -17,9 +17,8 @@ class SwitchClnChannel(Actor):
 
     switch_bin = '/usr/sbin/cln-switch-channel'
 
+    @run_on_cloudlinux
     def process(self):
-        if (version.current_version()[0] != "cloudlinux"):
-            return
         switch_cmd = [self.switch_bin, '-t', '8', '-o', '-f']
         yum_clean_cmd = ['yum', 'clean', 'all']
         update_release_cmd = ['yum', 'update', '-y', 'cloudlinux-release']

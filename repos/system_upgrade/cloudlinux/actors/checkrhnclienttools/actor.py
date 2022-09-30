@@ -1,7 +1,7 @@
 from leapp.actors import Actor
 from leapp import reporting
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
-from leapp.libraries.common.config import version
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 from leapp.libraries.actor.version import (
     Version, VersionParsingError,
@@ -24,9 +24,8 @@ class CheckRhnClientToolsVersion(Actor):
     minimal_release_int = 43
     minimal_release = '%s.el7.cloudlinux' % minimal_release_int
 
+    @run_on_cloudlinux
     def process(self):
-        if (version.current_version()[0] != "cloudlinux"):
-            return
         title, summary, remediation = None, None, None
         # ex:
         #   Version      : 2.0.2

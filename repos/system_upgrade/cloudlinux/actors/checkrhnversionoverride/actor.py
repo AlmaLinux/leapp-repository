@@ -1,7 +1,7 @@
 from leapp.actors import Actor
 from leapp import reporting
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
-from leapp.libraries.common.config import version
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 
 class CheckRhnVersionOverride(Actor):
@@ -14,9 +14,8 @@ class CheckRhnVersionOverride(Actor):
     produces = ()
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
+    @run_on_cloudlinux
     def process(self):
-        if (version.current_version()[0] != "cloudlinux"):
-            return
         up2date_config = '/etc/sysconfig/rhn/up2date'
         with open(up2date_config, 'r') as f:
             config_data = f.readlines()

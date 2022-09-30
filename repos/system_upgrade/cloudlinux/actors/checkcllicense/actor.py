@@ -2,7 +2,7 @@ from leapp.actors import Actor
 from leapp import reporting
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import CalledProcessError, run
-from leapp.libraries.common.config import version
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 import os
 
@@ -20,17 +20,16 @@ class CheckClLicense(Actor):
     system_id_path = '/etc/sysconfig/rhn/systemid'
     rhn_check_bin = '/usr/sbin/rhn_check'
 
+    @run_on_cloudlinux
     def process(self):
-        if (version.current_version()[0] != "cloudlinux"):
-            return
         res = None
         if os.path.exists(self.system_id_path):
             res = run([self.rhn_check_bin])
             self.log.debug('rhn_check result: %s', res)
         if not res or res['exit_code'] != 0 or res['stderr']:
             title = 'Server does not have an active CloudLinux license'
-            summary = 'Server does not have an active CloudLinux license. This renders key CloudLinux packages inaccessible, ' \
-                      'inhibiting the upgrade process.'
+            summary = 'Server does not have an active CloudLinux license. This renders key CloudLinux packages ' \
+                      'inaccessible, inhibiting the upgrade process.'
             remediation = 'Activate a CloudLinux license on this machine before running Leapp again.'
             reporting.create_report([
                 reporting.Title(title),

@@ -1,10 +1,7 @@
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
-from leapp.libraries.common.config import version
-
-from leapp.libraries.actor.addcustomrepositories import (
-    add_custom,
-)
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
+from leapp.libraries.actor.addcustomrepositories import add_custom
 
 
 class AddCustomRepositories(Actor):
@@ -17,9 +14,8 @@ class AddCustomRepositories(Actor):
     produces = ()
     tags = (IPUWorkflowTag, FirstBootPhaseTag)
 
+    @run_on_cloudlinux
     def process(self):
         # We only want to run this actor on CloudLinux systems.
         # current_version returns a tuple (release_name, version_value).
-        if (version.current_version()[0] == "cloudlinux"):
-            self.log.debug("CloudLinux OS detected, {} executing".format(self.name))
-            add_custom(self.log)
+        add_custom(self.log)
