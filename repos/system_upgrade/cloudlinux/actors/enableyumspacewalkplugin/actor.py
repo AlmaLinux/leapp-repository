@@ -35,7 +35,7 @@ class EnableYumSpacewalkPlugin(Actor):
             red = parser.read(self.config)
             if not red:
                 title = 'Yum spacewalk plugin config not found'
-            if not parser.get('main', 'enabled') != '1':
+            if parser.get('main', 'enabled') != '1':
                 parser.set('main', 'enabled', '1')
                 with open(self.config, 'w') as f:
                     parser.write(f)

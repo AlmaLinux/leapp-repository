@@ -32,11 +32,13 @@ class CheckUp2dateConfig(Actor):
                 for l in old_lines:
                     if 'serverURL=' in l and l not in new_lines:
                         replace = l
+                        break
             if replace:
                 for line in new_lines:
                     if 'serverURL=' in line:
                         line = replace
                         self.log.warning('"serverURL" parameter will be saved as "%s"', line.strip())
+                        break
             with open(self.original, 'w') as f:
                 f.writelines(new_lines)
                 f.flush()
