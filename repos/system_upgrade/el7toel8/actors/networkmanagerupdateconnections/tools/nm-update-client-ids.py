@@ -5,7 +5,7 @@ import sys
 import gi
 
 try:
-    gi.check_version("NM", "1.0")
+    gi.require_version("NM", "1.0")
 except ValueError:
     # If we're missing NetworkManager-libnm, the script won't function.
     print(
