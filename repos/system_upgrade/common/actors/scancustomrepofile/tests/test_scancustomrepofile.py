@@ -6,7 +6,7 @@ from leapp.libraries.common.testutils import produce_mocked
 from leapp.libraries.stdlib import api
 
 from leapp.models import (CustomTargetRepository, CustomTargetRepositoryFile,
-    RepositoryData, RepositoryFile, TargetSystemType)
+    RepositoryData, RepositoryFile)
 
 
 _REPODATA = [
