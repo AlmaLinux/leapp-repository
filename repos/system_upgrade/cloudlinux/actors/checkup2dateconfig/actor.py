@@ -24,9 +24,9 @@ class CheckUp2dateConfig(Actor):
         Here is an actor which tries to save old `serverURL` parameter to new config and move new instead of old one
         """
         replace, old_lines, new_lines = None, None, None
-        if os.path.exists(new):
+        if os.path.exists(self.new):
             self.log.warning('"%s" config found, trying to replace old one', self.new)
-            with open(original) as o, open(new) as n:
+            with open(self.original) as o, open(self.new) as n:
                 old_lines = o.readlines()
                 new_lines = n.readlines()
                 for l in old_lines:
