@@ -41,4 +41,6 @@ class SelectTargetSystemType(Actor):
 
     def process(self):
         target_system_type = self.get_answers(self.dialogs[0]).get('select')
+        if not target_system_type:
+            target_system_type = 'stable'
         self.produce(TargetSystemType(system_type=target_system_type))
