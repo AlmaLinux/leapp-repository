@@ -129,7 +129,7 @@ The file contains two sections, `mapping` and `repositories`.
   - Red Hat update channel classification. Most of the time you won't need to use these.
 
 `mapping` establishes connections between described repositories.
-Each entryy in the list defines a mapping between major system versions, and contains the following elements:
+Each entry in the list defines a mapping between major system versions, and contains the following elements:
 - source_major_version: major system version from which the system would be upgraded
 - target_major_version: major system version to which the system would be elevated
 - entries: the list of repository mappings
