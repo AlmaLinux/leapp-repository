@@ -68,6 +68,11 @@ Start a preupgrade check. In the meantime, the Leapp utility creates a special /
 
 `sudo leapp preupgrade`
 
+The preupgrade process may stall with the following message:
+> Inhibitor: Newest installed kernel not in use
+
+Make sure your system is running the latest kernel before proceeding with the upgrade. If you updated the system recently, a reboot may be sufficient to do so. Otherwise, edit your Grub configuration accordingly.
+
 > NOTE: In certain configurations, Leapp generates `/var/log/leapp/answerfile` with true/false questions. Leapp utility requires answers to all these questions in order to proceed with the upgrade.
 
 Once the preupgrade process completes, the results will be contained in `/var/log/leapp/leapp-report.txt` file.
