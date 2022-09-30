@@ -8,11 +8,13 @@ git clone -b cloudlinux --single-branch https://github.com/prilr/leapp-repositor
 
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/libraries/config/version.py /etc/leapp/repos.d/system_upgrade/common/libraries/config/version.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/ipuworkflowconfig/libraries/ipuworkflowconfig.py /etc/leapp/repos.d/system_upgrade/common/actors/ipuworkflowconfig/libraries/ipuworkflowconfig.py
-yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/redhatsignedrpmscanner/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/redhatsignedrpmscanner/actor.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/models/targetsystemtype.py /etc/leapp/repos.d/system_upgrade/common/models/targetsystemtype.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/scancustomrepofile/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/scancustomrepofile/actor.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py /etc/leapp/repos.d/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py
+yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/redhatsignedrpmscanner/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/redhatsignedrpmscanner/actor.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/actors/setuptargetrepos/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/setuptargetrepos/actor.py
+yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/el7toel8/actors/networkmanagerupdateconnections/actor.py /etc/leapp/repos.d/system_upgrade/el7toel8/actors/networkmanagerupdateconnections/actor.py
+yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/el7toel8/actors/networkmanagerupdateconnections/tools/nm-update-client-ids.py /etc/leapp/repos.d/system_upgrade/el7toel8/actors/networkmanagerupdateconnections/tools/nm-update-client-ids.py
 yes | cp -f /root/leapp-repository-cloudlinux/repos/system_upgrade/common/libraries/dnfplugin.py /etc/leapp/repos.d/system_upgrade/common/libraries/dnfplugin.py
 
 yes | cp -R /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.4 /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.6
