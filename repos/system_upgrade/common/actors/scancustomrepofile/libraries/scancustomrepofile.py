@@ -37,14 +37,19 @@ def process(target_type="stable"):
             "Beta target type, loading the auxillary custom repo file {}.".format(CUSTOM_REPO_BETA_PATH)
         )
 
-        beta_repofile = repofileutils.parse_repofile(CUSTOM_REPO_BETA_PATH)
-        if not beta_repofile.data:
+        if not os.path.isfile(CUSTOM_REPO_BETA_PATH):
             api.current_logger().info(
-                "Beta repo file {} exists, but is empty. Nothing to do.".format(CUSTOM_REPO_BETA_PATH)
+                "The {} file doesn't exist. Nothing to do.".format(CUSTOM_REPO_BETA_PATH)
             )
         else:
-            repofile.data.extend(beta_repofile.data)
-            api.produce(CustomTargetRepositoryFile(file=CUSTOM_REPO_BETA_PATH))
+            beta_repofile = repofileutils.parse_repofile(CUSTOM_REPO_BETA_PATH)
+            if not beta_repofile.data:
+                api.current_logger().info(
+                    "Beta repo file {} exists, but is empty. Nothing to do.".format(CUSTOM_REPO_BETA_PATH)
+                )
+            else:
+                repofile.data.extend(beta_repofile.data)
+                api.produce(CustomTargetRepositoryFile(file=CUSTOM_REPO_BETA_PATH))
 
     for repo in repofile.data:
         api.produce(
