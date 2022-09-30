@@ -5,6 +5,7 @@ from leapp.libraries.stdlib import run, CalledProcessError
 from leapp.reporting import Report, create_report
 from leapp import reporting
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
+from leapp.libraries.common.config import version
 
 
 class UpdateCagefs(Actor):
@@ -20,6 +21,8 @@ class UpdateCagefs(Actor):
     tags = (FirstBootPhaseTag, IPUWorkflowTag)
 
     def process(self):
+        if (version.current_version()[0] != "cloudlinux"):
+            return
         if os.path.exists('/usr/sbin/cagefsctl'):
             try:
                 run(['/usr/sbin/cagefsctl', '--force-update'], checked=True)

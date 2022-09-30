@@ -2,6 +2,7 @@ from leapp.actors import Actor
 from leapp import reporting
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import CalledProcessError, run
+from leapp.libraries.common.config import version
 
 import os
 
@@ -20,6 +21,8 @@ class CheckClLicense(Actor):
     rhn_check_bin = '/usr/sbin/rhn_check'
 
     def process(self):
+        if (version.current_version()[0] != "cloudlinux"):
+            return
         res = None
         if os.path.exists(self.system_id_path):
             res = run([self.rhn_check_bin])

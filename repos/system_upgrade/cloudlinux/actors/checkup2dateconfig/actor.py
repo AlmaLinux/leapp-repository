@@ -1,6 +1,7 @@
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
+from leapp.libraries.common.config import version
 
 import os
 
@@ -23,6 +24,8 @@ class CheckUp2dateConfig(Actor):
         For some reason we get new .rpmnew file instead of the modified `original`
         This actor tries to save the old `serverURL` parameter to new config and move new instead of old one
         """
+        if (version.current_version()[0] != "cloudlinux"):
+            return
         replace, old_lines, new_lines = None, None, None
         if os.path.exists(self.new):
             self.log.warning('"%s" config found, trying to replace the old one', self.new)

@@ -1,6 +1,7 @@
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
+from leapp.libraries.common.config import version
 
 try:
     # py2
@@ -26,6 +27,8 @@ class EnableYumSpacewalkPlugin(Actor):
     config = '/etc/yum/pluginconf.d/spacewalk.conf'
 
     def process(self):
+        if (version.current_version()[0] != "cloudlinux"):
+            return
         summary = 'yum spacewalk plugin must be enabled for the CLN channels to work properly. ' \
             'Please make sure it is enabled. Default config path is "%s"' % self.config
         title = None
