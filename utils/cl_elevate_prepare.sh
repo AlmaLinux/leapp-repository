@@ -11,6 +11,7 @@ yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/redhatsign
 yes | mv -f /root/leapp-repository/repos/system_upgrade/common/models/targetsystemtype.py /etc/leapp/repos.d/system_upgrade/common/models/targetsystemtype.py
 yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/scancustomrepofile/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/scancustomrepofile/actor.py
 yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py /etc/leapp/repos.d/system_upgrade/common/actors/scancustomrepofile/libraries/scancustomrepofile.py
+yes | mv -f /root/leapp-repository/repos/system_upgrade/common/actors/setuptargetrepos/actor.py /etc/leapp/repos.d/system_upgrade/common/actors/setuptargetrepos/actor.py
 
 yes | cp -R /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.4 /etc/leapp/repos.d/system_upgrade/common/files/prod-certs/8.6
 yes | cp -R /root/leapp-repository/repos/system_upgrade/cloudlinux /etc/leapp/repos.d/system_upgrade/cloudlinux
@@ -20,6 +21,11 @@ rsync -a /root/leapp-data/files/cloudlinux/ /etc/leapp/files/
 
 rmmod floppy pata_acpi btrfs
 echo PermitRootLogin yes | tee -a /etc/ssh/sshd_config
+
+LEAPP_DEVEL_USE_PERSISTENT_PACKAGE_CACHE=1
+# LEAPP_DEVEL_RPMS_ALL_SIGNED=1
+# LEAPP_DEVEL_TARGET_PRODUCT_TYPE=beta
+
 leapp answer --add --section remove_pam_pkcs11_module_check.confirm=True
 leapp answer --add --section select_target_system_type.select=stable
 
