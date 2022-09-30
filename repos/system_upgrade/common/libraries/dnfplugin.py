@@ -372,6 +372,16 @@ def perform_transaction_check(target_userspace_info, used_repos, tasks, xfs_info
         )
 
 
+def prepare_channel(context):
+    import subprocess
+    up2date_config = '/etc/sysconfig/rhn/up2date'
+    channel_check = ['/usr/sbin/rhn-channel', '-l']
+    channel_reg = ['/usr/sbin/rhnreg_ks', '--force', '--serverUrl=https://xmlrpc.cln-staging.cloudlinux.com/XMLRPC/', '--activationkey=IPL']
+    update_release = ['yum', 'update', '-y', 'cloudlinux-release']
+    subprocess.call(channel_reg)
+    subprocess.call(update_release)
+
+
 def perform_rpm_download(target_userspace_info, used_repos, tasks, xfs_info, storage_info, plugin_info, on_aws=False):
     """
     Perform RPM download including the transaction test using dnf with our plugin
@@ -380,6 +390,7 @@ def perform_rpm_download(target_userspace_info, used_repos, tasks, xfs_info, sto
                           storage_info=storage_info) as (context, overlay, target_repoids):
         apply_workarounds(overlay.nspawn())
         dnfconfig.exclude_leapp_rpms(context)
+        prepare_channel(context)
         _transaction(
             context=context, stage='download', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks,
             test=True, on_aws=on_aws
