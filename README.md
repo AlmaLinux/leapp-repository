@@ -80,6 +80,9 @@ sudo leapp upgrade
 sudo reboot
 ```
 
+> NOTE: The upgrade process after the reboot may take a long time, up to 40-50 minutes, depending on the machine resources. If the machine remains unresponsive for more than 2 hours, assume the upgrade process failed during the after-reboot phase.
+> If it's still possible to access the machine in some way, the logs containing the information on what went wrong are located in this folder: `/var/log/leapp`
+
 A new entry in GRUB called ELevate-Upgrade-Initramfs will appear. The system will be automatically booted into it. See how the update process goes in the console.
 
 After reboot, login to the system and check how the migration went. Verify that the current OS is the one you need.
