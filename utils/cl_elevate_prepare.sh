@@ -21,5 +21,6 @@ rsync -a /root/leapp-data/files/cloudlinux/ /etc/leapp/files/
 rmmod floppy pata_acpi
 echo PermitRootLogin yes | tee -a /etc/ssh/sshd_config
 leapp answer --add --section remove_pam_pkcs11_module_check.confirm=True
+leapp answer --add --section select_target_system_type.select=stable
 
 echo -e "\nYou now can run \"leapp upgrade\"!\n"
