@@ -376,10 +376,17 @@ def _prepare_channel(context):
     import subprocess
     try:
         up2date_config = '/etc/sysconfig/rhn/up2date'
-        channel_check = ['/usr/sbin/rhn-channel', '-l']
-        channel_reg = ['/usr/sbin/rhnreg_ks', '--force', '--serverUrl=https://xmlrpc.cln-staging.cloudlinux.com/XMLRPC/', '--activationkey=IPL']
+        with open(up2date_config, 'r') as f:
+            config_data = f.readlines()
+            for line in config_data:
+                if line.startswith('versionOverride='):
+                    line = 'versionOverride=8'
+        with open(up2date_config, 'w') as f:
+            f.writelines(config_data)
+
+        rhn_check_cmd = ['/usr/sbin/rhn_check']
         update_release = ['yum', 'update', '-y', 'cloudlinux-release']
-        subprocess.call(channel_reg)
+        subprocess.call(rhn_check_cmd)
         subprocess.call(update_release)
     except OSError as e:
         api.current_logger().error('Could not call RHN command: Message: %s', str(e), exc_info=True)
