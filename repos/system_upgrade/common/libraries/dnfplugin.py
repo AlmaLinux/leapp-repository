@@ -374,26 +374,6 @@ def perform_transaction_check(target_userspace_info, used_repos, tasks, xfs_info
         )
 
 
-def _prepare_channel(context):
-    import subprocess
-    try:
-        up2date_config = '/etc/sysconfig/rhn/up2date'
-        with open(up2date_config, 'r') as f:
-            config_data = f.readlines()
-            for line in config_data:
-                if line.startswith('versionOverride='):
-                    line = 'versionOverride=8'
-        with open(up2date_config, 'w') as f:
-            f.writelines(config_data)
-
-        rhn_switch_cmd = ['/usr/sbin/cln-switch-channel', '-t 8', '-o']
-        yum_clean_cmd = ['yum', 'clean', 'all']
-        subprocess.call(rhn_switch_cmd)
-        subprocess.call(yum_clean_cmd)
-    except OSError as e:
-        api.current_logger().error('Could not call RHN command: Message: %s', str(e), exc_info=True)
-
-
 def perform_rpm_download(target_userspace_info, used_repos, tasks, xfs_info, storage_info, plugin_info, on_aws=False):
     """
     Perform RPM download including the transaction test using dnf with our plugin
@@ -402,7 +382,6 @@ def perform_rpm_download(target_userspace_info, used_repos, tasks, xfs_info, sto
                           storage_info=storage_info) as (context, overlay, target_repoids):
         apply_workarounds(overlay.nspawn())
         dnfconfig.exclude_leapp_rpms(context)
-        prepare_channel(context)
         _transaction(
             context=context, stage='download', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks,
             test=True, on_aws=on_aws
