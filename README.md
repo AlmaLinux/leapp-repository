@@ -70,14 +70,8 @@ Start a preupgrade check. In the meantime, the Leapp utility creates a special /
 
 > NOTE: In certain configurations, Leapp generates `/var/log/leapp/answerfile` with true/false questions. Leapp utility requires answers to all these questions in order to proceed with the upgrade.
 
-The following three fixes from the /var/log/leapp/leapp-report.txt file are the most common ones you’ll see.
-They are mandatory to apply, but you should also review the rest of the report and consider how the changes will affect your system.
-
-```bash
-sudo rmmod pata_acpi floppy
-echo PermitRootLogin yes | sudo tee -a /etc/ssh/sshd_config
-sudo leapp answer --section remove_pam_pkcs11_module_check.confirm=True
-```
+Once the preupgrade process completes, the results will be contained in `/var/log/leapp/leapp-report.txt` file.
+It's advised to review the report and consider how the changes will affect your system.
 
 Start an upgrade. You’ll be offered to reboot the system after this process is completed.
 
