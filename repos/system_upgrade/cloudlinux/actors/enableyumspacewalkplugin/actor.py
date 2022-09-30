@@ -14,8 +14,8 @@ except Exception:
 
 class EnableYumSpacewalkPlugin(Actor):
     """
-    Enable yum spacewalk plugin if it disabled
-    Needs to CLN channel work properly
+    Enable yum spacewalk plugin if it's disabled
+    Required for the CLN channel functionality to work properly
     """
 
     name = 'enable_yum_spacewalk_plugin'
@@ -26,7 +26,7 @@ class EnableYumSpacewalkPlugin(Actor):
     config = '/etc/yum/pluginconf.d/spacewalk.conf'
 
     def process(self):
-        summary = 'Yum spacewalk plugin must be enabled to CLN channel work properly. ' \
+        summary = 'yum spacewalk plugin must be enabled for the CLN channels to work properly. ' \
             'Please make sure it is enabled. Default config path is "%s"' % self.config
         title = None
 
@@ -34,15 +34,15 @@ class EnableYumSpacewalkPlugin(Actor):
         try:
             red = parser.read(self.config)
             if not red:
-                title = 'Yum spacewalk plugin config not found'
+                title = 'yum spacewalk plugin config not found'
             if parser.get('main', 'enabled') != '1':
                 parser.set('main', 'enabled', '1')
                 with open(self.config, 'w') as f:
                     parser.write(f)
-                self.log.info('Yum spacewalk plugin enabled')
+                self.log.info('yum spacewalk plugin enabled')
                 return
         except Exception as e:
-            title = 'Yum spacewalk plugin config error: %s' % e
+            title = 'yum spacewalk plugin config error: %s' % e
 
         if title:
             reporting.create_report([
