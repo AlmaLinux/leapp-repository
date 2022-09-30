@@ -215,14 +215,16 @@ def _transaction(context, stage, target_repoids, tasks, plugin_info, test=False,
                 message='Failed to execute dnf. Reason: {}'.format(str(e))
             )
         except CalledProcessError as e:
+            err_stdout = e.stdout
+            err_stderr = e.stderr
             if six.PY2:
-                e.stdout = e.stdout.encode('utf-8', 'xmlcharrefreplace')
-                e.stderr = e.stdout.encode('utf-8', 'xmlcharrefreplace')
+                err_stdout = e.stdout.encode('utf-8', 'xmlcharrefreplace')
+                err_stderr = e.stderr.encode('utf-8', 'xmlcharrefreplace')
 
             api.current_logger().error('DNF execution failed: ')
             raise StopActorExecutionError(
                 message='DNF execution failed with non zero exit code.\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}'.format(
-                    stdout=e.stdout, stderr=e.stderr
+                    stdout=err_stdout, stderr=err_stderr
                 )
             )
         finally:
