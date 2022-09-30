@@ -2,7 +2,7 @@ from leapp.actors import Actor
 from leapp.dialogs import Dialog
 from leapp.dialogs.components import ChoiceComponent
 from leapp.models import TargetSystemType
-from leapp.tags import IPUWorkflowTag, ChecksPhaseTag
+from leapp.tags import IPUWorkflowTag, FactsPhaseTag
 
 
 class SelectTargetSystemType(Actor):
@@ -17,7 +17,7 @@ class SelectTargetSystemType(Actor):
     name = 'select_target_system_type'
     consumes = ()
     produces = (TargetSystemType,)
-    tags = (IPUWorkflowTag, ChecksPhaseTag)
+    tags = (IPUWorkflowTag, FactsPhaseTag.Before)
 
     dialogs = (
         Dialog(
@@ -43,4 +43,6 @@ class SelectTargetSystemType(Actor):
         target_system_type = self.get_answers(self.dialogs[0]).get('select')
         if not target_system_type:
             target_system_type = 'stable'
+
+        self.log.info("Target system type selected by user: {}".format(target_system_type))
         self.produce(TargetSystemType(system_type=target_system_type))

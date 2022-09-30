@@ -44,6 +44,7 @@ def process(target_type="stable"):
             )
         else:
             repofile.data.extend(beta_repofile.data)
+            api.produce(CustomTargetRepositoryFile(file=CUSTOM_REPO_BETA_PATH))
 
     for repo in repofile.data:
         api.produce(
