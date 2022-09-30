@@ -5,7 +5,6 @@ from leapp.models import (
     CustomTargetRepositoryFile,
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
-from leapp.libraries.stdlib import api
 
 
 class ScanCustomRepofile(Actor):
