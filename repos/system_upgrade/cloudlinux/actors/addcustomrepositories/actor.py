@@ -9,8 +9,7 @@ from leapp.libraries.actor.addcustomrepositories import (
 
 class AddCustomRepositories(Actor):
     """
-    Move the files inside the custom-repos folder of this leapp
-    repository into the /etc/yum.repos.d repository.
+    Move the files inside the custom-repos folder of this leapp repository into the /etc/yum.repos.d repository.
     """
 
     name = 'add_custom_repositories'
@@ -23,4 +22,4 @@ class AddCustomRepositories(Actor):
         # current_version returns a tuple (release_name, version_value).
         if (version.current_version()[0] == "cloudlinux"):
             self.log.debug("CloudLinux OS detected, {} executing".format(self.name))
-            add_custom()
+            add_custom(self.log)
