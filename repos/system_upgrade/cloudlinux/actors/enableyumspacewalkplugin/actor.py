@@ -2,7 +2,14 @@ from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
 
-import ConfigParser
+try:
+    # py2
+    import ConfigParser as configparser
+    ParserClass = configparser.SafeConfigParser
+except Exception:
+    # py3
+    import configparser
+    ParserClass = configparser.ConfigParser
 
 
 class EnableYumSpacewalkPlugin(Actor):
@@ -23,7 +30,7 @@ class EnableYumSpacewalkPlugin(Actor):
             'Please make sure it is enabled. Default config path is "%s"' % self.config
         title = None
 
-        parser = ConfigParser.SafeConfigParser(allow_no_value=True)
+        parser = ParserClass(allow_no_value=True)
         try:
             red = parser.read(self.config)
             if not red:
