@@ -59,6 +59,9 @@ class EfiFinalizationFix(Actor):
                 details={'details': 'Actor did not receive FirmwareFacts message.'}
             )
 
+        if not has_efibootmgr:
+            return
+
         for fact in self.consume(FirmwareFacts):
             if fact.firmware == 'efi':
                 is_system_efi = True
