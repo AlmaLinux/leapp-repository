@@ -71,8 +71,16 @@ class EfiFinalizationFix(Actor):
             with open('/proc/mounts', 'r') as fp:
                 for line in fp:
                     if '/boot/efi' in line:
-                        efidev = line.split(' ', 1)[0]
-            run(['/sbin/efibootmgr', '-c', '-d', efidev, '-p 1', '-l', bootmgr_path, '-L', efi_bootentry_label])
+                        efidevpath = line.split(' ', 1)[0]
+                        efidev = efidevpath.split('/')[-1]
+            if os.path.exists('/proc/mdstat'):
+               with open('/proc/mdstat', 'r') as mds:
+                 for line in mds:
+                   if line.startswith(efidev):
+                     mddev = line.split(' ')[-1]
+                     newefidev = mddev.split('[', 1)[0]
+                     efidevpath = efidevpath.replace(efidev, newefidev)
+            run(['/sbin/efibootmgr', '-c', '-d', efidevpath, '-p 1', '-l', bootmgr_path, '-L', efi_bootentry_label])
 
             if not has_grub_cfg:
                 run(['/sbin/grub2-mkconfig', '-o', grub_cfg_path])
