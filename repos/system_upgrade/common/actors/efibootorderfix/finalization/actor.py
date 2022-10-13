@@ -1,4 +1,5 @@
 import os
+import re
 
 from leapp.libraries.stdlib import run, api
 from leapp.actors import Actor
@@ -37,6 +38,11 @@ class EfiFinalizationFix(Actor):
             'aarch64': 'shimaa64.efi'
         }
 
+        def devparts(dev):
+          part = next(re.finditer(r'\d+$', dev)).group(0)
+          dev = dev[:-len(part)]
+          return [dev, part];
+
         with open('/etc/system-release', 'r') as sr:
             release_line = next(line for line in sr if 'release' in line)
             distro = release_line.split(' release ', 1)[0]
@@ -68,19 +74,27 @@ class EfiFinalizationFix(Actor):
                 break
 
         if is_system_efi and has_shim:
+            efidevlist = []
             with open('/proc/mounts', 'r') as fp:
                 for line in fp:
                     if '/boot/efi' in line:
                         efidevpath = line.split(' ', 1)[0]
-                        efidev = efidevpath.split('/')[-1]
+                        efidevpart = efidevpath.split('/')[-1]
             if os.path.exists('/proc/mdstat'):
                with open('/proc/mdstat', 'r') as mds:
                  for line in mds:
-                   if line.startswith(efidev):
-                     mddev = line.split(' ')[-1]
-                     newefidev = mddev.split('[', 1)[0]
-                     efidevpath = efidevpath.replace(efidev, newefidev)
-            run(['/sbin/efibootmgr', '-c', '-d', efidevpath, '-p 1', '-l', bootmgr_path, '-L', efi_bootentry_label])
+                   if line.startswith(efidevpart):
+                     mddev = line.split(' ')
+                     for md in mddev:
+                       if '[' in md:
+                         efimd = md.split('[', 1)[0]
+                         efidp = efidevpath.replace(efidevpart, efimd)
+                         efidevlist.append(efidp)
+            if len(efidevlist) == 0:
+              efidevlist.append(efidevpath)
+            for devpath in efidevlist:
+              efidev, efipart = devparts(devpath)
+              run(['/sbin/efibootmgr', '-c', '-d', efidev, '-p', efipart, '-l', bootmgr_path, '-L', efi_bootentry_label])
 
             if not has_grub_cfg:
                 run(['/sbin/grub2-mkconfig', '-o', grub_cfg_path])
