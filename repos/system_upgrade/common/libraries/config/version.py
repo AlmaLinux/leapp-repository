@@ -13,7 +13,7 @@ OP_MAP = {
 
 _SUPPORTED_VERSIONS = {
     # Note: 'rhel-alt' is detected when on 'rhel' with kernel 4.x
-    '7': {'rhel': ['7.9'], 'rhel-alt': ['7.6'], 'rhel-saphana': ['7.9'], 'centos': ['7.9'], 'eurolinux': ['7.9'], 'ol': ['7.9']},
+    '7': {'rhel': ['7.9'], 'rhel-alt': ['7.6'], 'rhel-saphana': ['7.9'], 'centos': ['7.9'], 'eurolinux': ['7.9'], 'ol': ['7.9'], 'cloudlinux': ['7.9']},
     '8': {'rhel': ['8.5', '8.6'], 'centos': ['8.5'], 'almalinux': ['8.6'], 'eurolinux': ['8.6'], 'ol': ['8.6'], 'rocky': ['8.6']},
 }
 
