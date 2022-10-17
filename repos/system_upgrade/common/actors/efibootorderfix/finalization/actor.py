@@ -29,7 +29,8 @@ class EfiFinalizationFix(Actor):
                 'CentOS Stream': 'centos',
                 'Oracle Linux Server': 'redhat',
                 'Red Hat Enterprise Linux': 'redhat',
-                'Rocky Linux': 'rocky'
+                'Rocky Linux': 'rocky',
+                'CloudLinux': 'centos',
         }
 
         efi_shimname_dict = {
