@@ -196,6 +196,8 @@ rm -rf %{buildroot}%{leapp_python_sitelib}/leapp/cli/commands/tests
 rm -rf %{buildroot}%{repositorydir}/system_upgrade/el8toel9
 %else
 rm -rf %{buildroot}%{repositorydir}/system_upgrade/el7toel8
+# CloudLinux migration only supports el7 to el8
+rm -rf %{buildroot}%{repositorydir}/system_upgrade/cloudlinux
 %endif
 
 # remove component/unit tests, Makefiles, ... stuff that related to testing only
