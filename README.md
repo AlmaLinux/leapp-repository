@@ -265,53 +265,423 @@ The file `leapp-repository/repos/system_upgrade/common/workflows/inplace_upgrade
 Changes you want to submit upstream should be sent through pull requests to repositories https://github.com/AlmaLinux/leapp-repository and https://github.com/AlmaLinux/leapp-data.
 The standard GitHub contribution process applies - fork the repository, make your changes inside of it, then submit the pull request to be reviewed.
 
-### Example
-Suppose you would like to create an actor to copy a pre-supplied repository file into the upgraded system’s /etc/yum.repos.d.
+### Custom actor example
 
-First, you would create the new actor:
+"Actors" in Leapp terminology are Python scripts that run during the upgrade process.
+Actors are a core concept of the framework, and the entire process is built from them.
+
+Custom actors are the actors that are added by third-party developers, and are not present in the upstream Leapp repository.
+
+Actors can gather data, communicate with each other and modify the system during the upgrade.
+
+Let's examine how an upgrade problem might be resolved with a custom actor.
+
+#### Problem
+
+If you ever ran `leapp preupgrade` on unprepared systems before, you likely have seen the following message:
+
 ```
-cd ./leapp-repository/repos/system_upgrade/common
-snactor new-actor addcustomrepositories
+Upgrade has been inhibited due to the following problems:
+    1. Inhibitor: Possible problems with remote login using root account
 ```
 
-Since you'd want to run this actor after the upgrade has successfully completed, you’d use the FirstBootPhase tag in its tags field.
+It's caused by the change in default behaviour for permitting root logins between RHEL 7 and 8.
+In RHEL 8 logging in as root via password authentication is no longer allowed by default, which means that some machines can become inaccessible after the upgrade.
+
+Some configurations require an administrator's intervention to resolve this issue, but SSHD configurations where no `PermitRootLogin` options were explicitly set can be modified to preserve the RHEL 7 default behaviour and not require manual modification.
+
+Let's create a custom actor to handle such cases for us.
+
+#### Creating an actor
+
+Actors are contained in ["repositories"](https://leapp.readthedocs.io/en/latest/leapp-repositories.html) - subfolders containing compartmentalized code and resources that the Leapp framework will use during the upgrade.
+
+> Do not confuse Leapp repositories with Git repositories - these are two different concepts, independent of one another.
+
+Inside the `leapp-repository` GitHub repo, Leapp repositories are contained inside the `repos` subfolder.
+
+Everything related to system upgrade proper is inside the `system_upgrade` folder.
+`el7toel8` contains resources used when upgrading from RHEL 7 to RHEL 8, `el8toel9` - RHEL 8 to 9, `common` - shared resources.
+
+Since the change in system behaviour we're looking to mitigate occurs between RHEL 7 and 8, the appopriate repository to place the actor in is `el7toel8`.
+
+You can [create new actors](https://leapp.readthedocs.io/en/latest/first-actor.html) by using the `snactor` tool provided by Leapp, or manually.
+
+`snactor new-actor ACTOR_NAME`
+
+The bare-bones actor code consists of a file named `actor.py` contained inside the `actors/<actor_name>` subfolder of a Leapp repository.
+
+In this case, then, it should be located in a directory like `leapp-repository/repos/system_upgrade/el7toel8/actors/opensshmodifypermitroot`
+
+If you used snactor to create it, you'll see contents like the following:
 
 ```python
-	tags = (IPUWorkflowTag, FirstBootPhaseTag)
+from leapp.actors import Actor
+
+
+class OpenSSHModifyPermitRoot(Actor):
+    """
+    No documentation has been provided for the open_ssh_actor_example actor.
+    """
+
+    name = 'openssh_modify_permit_root'
+    consumes = ()
+    produces = ()
+    tags = ()
+
+    def process(self):
+        pass
 ```
 
-If you wanted to ensure that the actor only runs on AlmaLinux systems, and not on any target OS variant, you could check the release name by importing the corresponding function from leapp API:
+#### Configuring the actor
+
+Actors' `consumes` and `produces` attributes define types of [*messages*](https://leapp.readthedocs.io/en/latest/messaging.html) these actors receive or send.
+
+For instance, during the initial upgrade stages several standard actors gather system information and *produce* messages with gathered data to other actors.
+
+> Messages are defined by *message models*, which are contained inside Leapp repository's `models` subfolder, just like all actors are contained in `actors`.
+
+Actors' `tags` attributes define the [phase of the upgrade](https://leapp.readthedocs.io/en/latest/working-with-workflows.html) during which that actor gets executed.
+
+> The list of all phases can be found in file `leapp-repository/repos/system_upgrade/common/workflows/inplace_upgrade.py`.
+
+##### Receiving messages
+
+Leapp already provides information about the OpenSSH configuration through the `OpenSshConfigScanner` actor. This actor provides a message with a message model `OpenSshConfig`.
+
+Instead of opening and reading the configuration file in our own actor, we can simply read the provided message to see if we can safely alter the configuration automatically.
+
+To begin with, import the message model from `leapp.models`:
 
 ```python
-from leapp.libraries.common.config import version
-
-	def process(self):
-					# We only want to run this actor on AlmaLinux systems.
-					# current_version returns a tuple (release_name, version_value).
-					if (version.current_version()[0] == "almalinux"):
-									copy_custom_repo_files()
+from leapp.models import OpenSshConfig
 ```
 
-Files that are accessible by all actors in the repository should be placed into the files/ subdirectory. For the main leapp repository, that directory has the path leapp-repository/repos/system_upgrade/common/files.
+> It doesn't matter in which Leapp repository the model is located. Leapp will gather all availabile data inside its submodules.
 
-Create the subfolder `custom-repos` to place repo files into, then finalize the actor’s code:
+Add the message model to the list of messages to be received:
 
 ```python
-import os
-import os.path
-import shutil
+consumes = (OpenSshConfig, )
+```
 
+The actor now will be able to read messages of this format provided by other actors that were executed prior to its own execution.
+
+##### Sending messages
+
+To ensure that the user knows about the automatic configuration change that will occur, we can send a *report*.
+
+> Reports are a built-in type of Leapp messages that are added to the `/var/log/leapp/leapp-report.txt` file at the end of the upgrade process.
+
+To start off with, add a Report message model to the `produces` attribute of the actor.
+
+```python
+produces = (Report, )
+```
+
+Don't forget to import the model type from `leapp.models`.
+
+All done - now we're ready to make use of the models inside the actor's code.
+
+
+##### Running phase
+
+Both workflow and phase tags are imported from leapp.tags:
+
+```python
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
+```
+
+All actors to be run during the upgrade must contain the upgrade workflow tag. It looks as follows:
+
+```python
+tags = (IPUWorkflowTag, )
+```
+
+To define the upgrade phase during which an actor will run, set the appropriate tag in the `tags` attribute.
+
+Standard actor `OpenSshPermitRootLoginCheck` that blocks the upgrade if it detects potential problems in SSH configuration, runs during the *checks* phase, and has the `ChecksPhaseTag` inside its `tags`.
+
+Therefore, we want to run our new actor before it. We can select an earlier phase from the list of phases - or we can mark our actor to run *before other actors* in the phase with a modifier as follows:
+
+```python
+tags = (ChecksPhaseTag.Before, IPUWorkflowTag, )
+```
+
+All phases have built-in `.Before` and `.After` stages that can be used this way. Now our actor is guaranteed to be run before the `OpenSshPermitRootLoginCheck` actor.
+
+
+#### Actor code
+
+With configuration done, it's time to write the actual code of the actor that will be executed during the upgrade.
+
+The entry point for it is the actor's `process` function.
+
+First, let's start by reading the SSH config message we've set the actor to receive.
+
+```python
+# Importing from Leapp built-ins.
+from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.stdlib import api
 
-CUSTOM_REPOS_FOLDER = 'custom-repos'
-REPO_ROOT_PATH = "/etc/yum.repos.d"
+def process(self):
+    # Retreive the OpenSshConfig message.
 
-def copy_custom_repo_files():
-		custom_repo_dir = api.get_common_folder_path(CUSTOM_REPOS_FOLDER)
+    # Actors have `consume` and `produce` methods that work with messages.
+    # `consume` expects a message type that is listed inside the `consumes` attribute.
+    openssh_messages = self.consume(OpenSshConfig)
 
-		for repofile in os.listdir(custom_repo_dir):
-				full_repo_path = os.path.join(custom_repo_dir, repofile)
-				shutil.copy(full_repo_path, REPO_ROOT_PATH)
+    # The return value of self.consume is an iterator.
+    config = next(openssh_messages, None)
+    # We expect to get only one message of this type. If there's more than one, something's wrong.
+    if list(openssh_messages):
+        # api.current_logger lets you pass messages into Leapp's log. By default, they will
+        # be displayed in `/var/log/leapp/leapp-preupgrade.log`
+        # or `/var/log/leapp/leapp-upgrade.log`, depending on which command you ran.
+        api.current_logger().warning('Unexpectedly received more than one OpenSshConfig message.')
+    # If the config message is not present, the standard actor failed to read it.
+    # Stop here.
+    if not config:
+        # StopActorExecutionError is a Leapp built-in exception type that halts the actor execution.
+        # By default this will also halt the upgrade phase and the upgrade process in general.
+        raise StopActorExecutionError(
+            'Could not check openssh configuration', details={'details': 'No OpenSshConfig facts found.'}
+        )
 ```
 
-Refer to existing actors and [Leapp documentation](https://leapp.readthedocs.io/) to use more complex functionality in your actors.
+Next, let's read the received message and see if we can modify the configuration.
+
+```python
+import errno
+
+CONFIG = '/etc/ssh/sshd_config'
+
+    # The OpenSshConfig model has a permit_root_login attribute that contains
+    # all instances of PermitRootLogin option present in the config.
+    # See leapp-repository/repos/system_upgrade/el7toel8/models/opensshconfig.py
+
+    # We can only safely modify the config to preserve the default behaviour if no
+    # explicit PermitRootLogin option was set anywhere in the config.
+    if not config.permit_root_login:
+        try:
+            # Read the config into memory to prepare for its modification.
+            with open(CONFIG, 'r') as fd:
+                sshd_config = fd.readlines()
+
+                # If the last line of the config doesn't have a newline, add it.
+                if sshd_config[-1][-1] != '\n':
+                    sshd_config[-1].append('\n')
+
+                # These are the lines we want to add to the configuration file.
+                permit_autoconf = [
+                    "\n",
+                    "# Automatically added by Leapp to preserve RHEL7 default\n",
+                    "# behaviour after migration.\n",
+                    "PermitRootLogin yes\n"
+                ]
+                sshd_config.extend(permit_autoconf)
+            # Write the changed config into the file.
+            with open(CONFIG, 'w') as fd:
+                fd.writelines(sshd_config)
+
+        # Handle errors.
+        except IOError as err:
+            if err.errno != errno.ENOENT:
+                error = 'Failed to open sshd_config: {}'.format(str(err))
+                api.current_logger().error(error)
+            return
+```
+
+The functional part of the actor itself is done. Now, let's add a report to let the user know
+the machine's SSH configuration has changed.
+
+```python
+from leapp import reporting
+from leapp.models import Report
+from leapp.reporting import create_report
+
+# Tags signify the categories the report and the associated issue are related to.
+COMMON_REPORT_TAGS = [
+    reporting.Tags.AUTHENTICATION,
+    reporting.Tags.SECURITY,
+    reporting.Tags.NETWORK,
+    reporting.Tags.SERVICES
+]
+
+    # Related resources are listed in the report to help resolving the issue.
+    resources = [
+        reporting.RelatedResource('package', 'openssh-server'),
+        reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+    ]
+    # This function creates and submits the actual report message.
+    # Normally you'd need to call self.produce() to send messages,
+    # but reports are a special case that gets handled automatically.
+    create_report([
+        # Report title and summary.
+        reporting.Title('SSH configuration automatically modified to permit root login'),
+        reporting.Summary(
+            'Your OpenSSH configuration file does not explicitly state '
+            'the option PermitRootLogin in sshd_config file. '
+            'Its default is "yes" in RHEL7, but will change in '
+            'RHEL8 to "prohibit-password", which may affect your ability '
+            'to log onto this machine after the upgrade. '
+            'To prevent this from occuring, the PermitRootLogin option '
+            'has been explicity set to "yes" to preserve the default behaivour '
+            'after migration.'
+        ),
+        # Reports are ordered by severity in the list.
+        reporting.Severity(reporting.Severity.MEDIUM),
+        reporting.Tags(COMMON_REPORT_TAGS),
+        # Remediation section contains hints on how to resolve the reported (potential) problem.
+        reporting.Remediation(
+            hint='If you would prefer to configure the root login policy yourself, '
+                    'consider setting the PermitRootLogin option '
+                    'in sshd_config explicitly.'
+        )
+    ] + resources)
+```
+
+The actor code is now complete. The final version with less verbose comments will look something like this:
+
+```python
+from leapp import reporting
+from leapp.actors import Actor
+from leapp.exceptions import StopActorExecutionError
+from leapp.libraries.stdlib import api
+from leapp.models import OpenSshConfig, Report
+from leapp.reporting import create_report
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
+
+import errno
+
+CONFIG = '/etc/ssh/sshd_config'
+
+COMMON_REPORT_TAGS = [
+    reporting.Tags.AUTHENTICATION,
+    reporting.Tags.SECURITY,
+    reporting.Tags.NETWORK,
+    reporting.Tags.SERVICES
+]
+
+
+class OpenSSHModifyPermitRoot(Actor):
+    """
+    OpenSSH doesn't allow root logins with password by default on RHEL8.
+
+    Check the values of PermitRootLogin in OpenSSH server configuration file
+    and see if it was set explicitly.
+    If not, adding an explicit "PermitRootLogin yes" will preserve the current
+    default behaviour.
+    """
+
+    name = 'openssh_modify_permit_root'
+    consumes = (OpenSshConfig, )
+    produces = (Report, )
+    tags = (ChecksPhaseTag.Before, IPUWorkflowTag, )
+
+    def process(self):
+        # Retreive the OpenSshConfig message.
+        openssh_messages = self.consume(OpenSshConfig)
+        config = next(openssh_messages, None)
+        if list(openssh_messages):
+            api.current_logger().warning('Unexpectedly received more than one OpenSshConfig message.')
+        if not config:
+            raise StopActorExecutionError(
+                'Could not check openssh configuration', details={'details': 'No OpenSshConfig facts found.'}
+            )
+
+        # Read and modify the config.
+        # Only act if there's no explicit PermitRootLogin option set anywhere in the config.
+        if not config.permit_root_login:
+            try:
+                with open(CONFIG, 'r') as fd:
+                    sshd_config = fd.readlines()
+
+                    # If the last line of the config doesn't have a newline, add it.
+                    if sshd_config[-1][-1] != '\n':
+                        sshd_config[-1].append('\n')
+
+                    permit_autoconf = [
+                        "\n",
+                        "# Automatically added by Leapp to preserve RHEL7 default\n",
+                        "# behaviour after migration.\n",
+                        "PermitRootLogin yes\n"
+                    ]
+                    sshd_config.extend(permit_autoconf)
+                with open(CONFIG, 'w') as fd:
+                    fd.writelines(sshd_config)
+
+            except IOError as err:
+                if err.errno != errno.ENOENT:
+                    error = 'Failed to open sshd_config: {}'.format(str(err))
+                    api.current_logger().error(error)
+                return
+
+            # Create a report letting the user know what happened.
+            resources = [
+                reporting.RelatedResource('package', 'openssh-server'),
+                reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+            ]
+            create_report([
+                reporting.Title('SSH configuration automatically modified to permit root login'),
+                reporting.Summary(
+                    'Your OpenSSH configuration file does not explicitly state '
+                    'the option PermitRootLogin in sshd_config file. '
+                    'Its default is "yes" in RHEL7, but will change in '
+                    'RHEL8 to "prohibit-password", which may affect your ability '
+                    'to log onto this machine after the upgrade. '
+                    'To prevent this from occuring, the PermitRootLogin option '
+                    'has been explicity set to "yes" to preserve the default behaivour '
+                    'after migration.'
+                ),
+                reporting.Severity(reporting.Severity.MEDIUM),
+                reporting.Tags(COMMON_REPORT_TAGS),
+                reporting.Remediation(
+                    hint='If you would prefer to configure the root login policy yourself, '
+                            'consider setting the PermitRootLogin option '
+                            'in sshd_config explicitly.'
+                )
+            ] + resources)
+```
+
+Due to this actor's small size, the entire code can be fit inside the `process()` function.
+
+#### Libraries
+
+Larger actors can import code from [common libraries](https://leapp.readthedocs.io/en/latest/best-practices.html#move-generic-functionality-to-libraries) or define their own "libraries" and run code from them inside the `process()` function.
+
+In such cases, the directory layout looks like this:
+```
+actors
++  example_actor_name
+|  + libraries
+|       + example_actor_name.py
+|  + actor.py
+...
+```
+
+and importing code from them looks like this:
+
+`from leapp.libraries.actor.example_actor_name import example_lib_function`
+
+This is also the main way of [writing unit-testable code](https://leapp.readthedocs.io/en/latest/best-practices.html#write-unit-testable-code), since the code contained inside the `process()` function cannot be unit-tested normally.
+
+#### Debugging
+
+The Leapp utility `snactor` can also be used for unit-testing the created actors.
+
+It is capable of saving the output of actors as locally stored messages, so that they can be consumed by other actors that are being developed.
+
+We need . To make the data consumable, run the actor producing the data with the –save-output option:
+
+`snactor run --save-output OpenSshConfigScanner`
+
+The output of the actor is stored in the local repository data file, and it can be used by other actors. To flush all saved messages from the repository database, run `snactor messages clear`.
+
+With the input messages available and stored, the actor being developed can be tested.
+
+`snactor run --print-output OpenSshModifyPermitRoot`
+
+#### Additional information
+
+For more information about Leapp and additional tutorials, visit the (official Leapp documentation)[https://leapp.readthedocs.io/en/latest/tutorials.html].
