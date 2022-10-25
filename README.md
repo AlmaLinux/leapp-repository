@@ -672,7 +672,7 @@ The Leapp utility `snactor` can also be used for unit-testing the created actors
 
 It is capable of saving the output of actors as locally stored messages, so that they can be consumed by other actors that are being developed.
 
-We need . To make the data consumable, run the actor producing the data with the –save-output option:
+We need the OpenSshConfig message, which is produced by the OpenSshConfigScanner standard actor. To make the data consumable, run the actor producing the data with the –save-output option:
 
 `snactor run --save-output OpenSshConfigScanner`
 
