@@ -19,22 +19,22 @@ def semantics_changes(config):
 
 def add_permitrootlogin_conf():
     CONFIG = '/etc/ssh/sshd_config'
+    CONFIG_BACKUP = '/etc/ssh/sshd_config.leapp_backup'
     try:
         with open(CONFIG, 'r') as fd:
             sshd_config = fd.readlines()
 
-            # If the last line of the config doesn't have a newline, add it.
-            if sshd_config[-1][-1] != '\n':
-                sshd_config[-1].append('\n')
-
             permit_autoconf = [
-                "\n",
                 "# Automatically added by Leapp to preserve RHEL7 default\n",
                 "# behaviour after migration.\n",
+                "# Placed on top of the file to avoid being included into Match blocks.\n",
                 "PermitRootLogin yes\n"
+                "\n",
             ]
-            sshd_config.extend(permit_autoconf)
+            permit_autoconf.extend(sshd_config)
         with open(CONFIG, 'w') as fd:
+            fd.writelines(permit_autoconf)
+        with open(CONFIG_BACKUP, 'w') as fd:
             fd.writelines(sshd_config)
 
     except IOError as err:

@@ -39,7 +39,8 @@ class OpenSshPermitRootLoginCheck(Actor):
 
         resources = [
             reporting.RelatedResource('package', 'openssh-server'),
-            reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+            reporting.RelatedResource('file', '/etc/ssh/sshd_config'),
+            reporting.RelatedResource('file', '/etc/ssh/sshd_config.leapp_backup')
         ]
         if not config.permit_root_login:
             add_permitrootlogin_conf()
@@ -54,6 +55,8 @@ class OpenSshPermitRootLoginCheck(Actor):
                     'To prevent this from occuring, the PermitRootLogin option '
                     'has been explicity set to "yes" to preserve the default behaivour '
                     'after migration.'
+                    'The original configuration file has been backed up to'
+                    '/etc/ssh/sshd_config.leapp_backup'
                 ),
                 reporting.Severity(reporting.Severity.MEDIUM),
                 reporting.Tags(COMMON_REPORT_TAGS),
