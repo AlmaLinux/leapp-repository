@@ -431,7 +431,7 @@ def process(self):
     # `consume` expects a message type that is listed inside the `consumes` attribute.
     openssh_messages = self.consume(OpenSshConfig)
 
-    # The return value of self.consume is an iterator.
+    # The return value of self.consume is a generator of messages of the provided type.
     config = next(openssh_messages, None)
     # We expect to get only one message of this type. If there's more than one, something's wrong.
     if list(openssh_messages):
@@ -455,6 +455,7 @@ Next, let's read the received message and see if we can modify the configuration
 import errno
 
 CONFIG = '/etc/ssh/sshd_config'
+CONFIG_BACKUP = '/etc/ssh/sshd_config.leapp_backup'
 
     # The OpenSshConfig model has a permit_root_login attribute that contains
     # all instances of PermitRootLogin option present in the config.
@@ -468,20 +469,20 @@ CONFIG = '/etc/ssh/sshd_config'
             with open(CONFIG, 'r') as fd:
                 sshd_config = fd.readlines()
 
-                # If the last line of the config doesn't have a newline, add it.
-                if sshd_config[-1][-1] != '\n':
-                    sshd_config[-1].append('\n')
-
                 # These are the lines we want to add to the configuration file.
                 permit_autoconf = [
-                    "\n",
                     "# Automatically added by Leapp to preserve RHEL7 default\n",
                     "# behaviour after migration.\n",
+                    "# Placed on top of the file to avoid being included into Match blocks.\n",
                     "PermitRootLogin yes\n"
+                    "\n",
                 ]
-                sshd_config.extend(permit_autoconf)
+                permit_autoconf.extend(sshd_config)
             # Write the changed config into the file.
             with open(CONFIG, 'w') as fd:
+                fd.writelines(permit_autoconf)
+            # Write the backup file with the old configuration.
+            with open(CONFIG_BACKUP, 'w') as fd:
                 fd.writelines(sshd_config)
 
         # Handle errors.
@@ -496,6 +497,7 @@ The functional part of the actor itself is done. Now, let's add a report to let 
 the machine's SSH configuration has changed.
 
 ```python
+# These Leapp imports are required to create reports.
 from leapp import reporting
 from leapp.models import Report
 from leapp.reporting import create_report
@@ -512,6 +514,7 @@ COMMON_REPORT_TAGS = [
     resources = [
         reporting.RelatedResource('package', 'openssh-server'),
         reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+        reporting.RelatedResource('file', '/etc/ssh/sshd_config.leapp_backup')
     ]
     # This function creates and submits the actual report message.
     # Normally you'd need to call self.produce() to send messages,
@@ -528,6 +531,8 @@ COMMON_REPORT_TAGS = [
             'To prevent this from occuring, the PermitRootLogin option '
             'has been explicity set to "yes" to preserve the default behaivour '
             'after migration.'
+            'The original configuration file has been backed up to'
+            '/etc/ssh/sshd_config.leapp_backup'
         ),
         # Reports are ordered by severity in the list.
         reporting.Severity(reporting.Severity.MEDIUM),
@@ -538,7 +543,7 @@ COMMON_REPORT_TAGS = [
                     'consider setting the PermitRootLogin option '
                     'in sshd_config explicitly.'
         )
-    ] + resources)
+    ] + resources) # Resources are added to the list of data for the report.
 ```
 
 The actor code is now complete. The final version with less verbose comments will look something like this:
@@ -555,6 +560,7 @@ from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 import errno
 
 CONFIG = '/etc/ssh/sshd_config'
+CONFIG_BACKUP = '/etc/ssh/sshd_config.leapp_backup'
 
 COMMON_REPORT_TAGS = [
     reporting.Tags.AUTHENTICATION,
@@ -597,18 +603,17 @@ class OpenSSHModifyPermitRoot(Actor):
                 with open(CONFIG, 'r') as fd:
                     sshd_config = fd.readlines()
 
-                    # If the last line of the config doesn't have a newline, add it.
-                    if sshd_config[-1][-1] != '\n':
-                        sshd_config[-1].append('\n')
-
                     permit_autoconf = [
-                        "\n",
                         "# Automatically added by Leapp to preserve RHEL7 default\n",
                         "# behaviour after migration.\n",
+                        "# Placed on top of the file to avoid being included into Match blocks.\n",
                         "PermitRootLogin yes\n"
+                        "\n",
                     ]
-                    sshd_config.extend(permit_autoconf)
+                    permit_autoconf.extend(sshd_config)
                 with open(CONFIG, 'w') as fd:
+                    fd.writelines(permit_autoconf)
+                with open(CONFIG_BACKUP, 'w') as fd:
                     fd.writelines(sshd_config)
 
             except IOError as err:
@@ -620,7 +625,8 @@ class OpenSSHModifyPermitRoot(Actor):
             # Create a report letting the user know what happened.
             resources = [
                 reporting.RelatedResource('package', 'openssh-server'),
-                reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+                reporting.RelatedResource('file', '/etc/ssh/sshd_config'),
+                reporting.RelatedResource('file', '/etc/ssh/sshd_config.leapp_backup')
             ]
             create_report([
                 reporting.Title('SSH configuration automatically modified to permit root login'),
@@ -633,6 +639,8 @@ class OpenSSHModifyPermitRoot(Actor):
                     'To prevent this from occuring, the PermitRootLogin option '
                     'has been explicity set to "yes" to preserve the default behaivour '
                     'after migration.'
+                    'The original configuration file has been backed up to'
+                    '/etc/ssh/sshd_config.leapp_backup'
                 ),
                 reporting.Severity(reporting.Severity.MEDIUM),
                 reporting.Tags(COMMON_REPORT_TAGS),
@@ -644,11 +652,12 @@ class OpenSSHModifyPermitRoot(Actor):
             ] + resources)
 ```
 
-Due to this actor's small size, the entire code can be fit inside the `process()` function.
+Due to this actor's small size, the entire code can be fit inside the `process` function.
+If it grows beyond manageable size, or you want to run unit tests on its components, it's advised to move out all of the functional parts from the `process` function into the *actor library*.
 
 #### Libraries
 
-Larger actors can import code from [common libraries](https://leapp.readthedocs.io/en/latest/best-practices.html#move-generic-functionality-to-libraries) or define their own "libraries" and run code from them inside the `process()` function.
+Larger actors can import code from [common libraries](https://leapp.readthedocs.io/en/latest/best-practices.html#move-generic-functionality-to-libraries) or define their own "libraries" and run code from them inside the `process` function.
 
 In such cases, the directory layout looks like this:
 ```
@@ -664,7 +673,9 @@ and importing code from them looks like this:
 
 `from leapp.libraries.actor.example_actor_name import example_lib_function`
 
-This is also the main way of [writing unit-testable code](https://leapp.readthedocs.io/en/latest/best-practices.html#write-unit-testable-code), since the code contained inside the `process()` function cannot be unit-tested normally.
+This is also the main way of [writing unit-testable code](https://leapp.readthedocs.io/en/latest/best-practices.html#write-unit-testable-code), since the code contained inside the `process` function cannot be unit-tested normally.
+
+In this actor format, you would move all of the actual actor code into the associated library, leaving only preparation and function calls inside the `process` function.
 
 #### Debugging
 
@@ -672,7 +683,7 @@ The Leapp utility `snactor` can also be used for unit-testing the created actors
 
 It is capable of saving the output of actors as locally stored messages, so that they can be consumed by other actors that are being developed.
 
-We need the OpenSshConfig message, which is produced by the OpenSshConfigScanner standard actor. To make the data consumable, run the actor producing the data with the –save-output option:
+For example, to test our new actor, we need the OpenSshConfig message, which is produced by the OpenSshConfigScanner standard actor. To make the data consumable, run the actor producing the data with the –save-output option:
 
 `snactor run --save-output OpenSshConfigScanner`
 
@@ -684,4 +695,4 @@ With the input messages available and stored, the actor being developed can be t
 
 #### Additional information
 
-For more information about Leapp and additional tutorials, visit the (official Leapp documentation)[https://leapp.readthedocs.io/en/latest/tutorials.html].
+For more information about Leapp and additional tutorials, visit the [official Leapp documentation](https://leapp.readthedocs.io/en/latest/tutorials.html).
