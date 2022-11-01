@@ -2,18 +2,23 @@ import functools
 import itertools
 import json
 import os
+import sys
 import shutil
 import tarfile
 from datetime import datetime
+from contextlib import contextmanager
 
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
-from leapp.exceptions import CommandError
+from leapp.exceptions import CommandError, LeappRuntimeError
 from leapp.repository.scan import find_and_scan_repositories
 from leapp.utils import audit
 from leapp.utils.audit import get_checkpoints, get_connection, get_messages
-from leapp.utils.output import report_unsupported
+from leapp.utils.output import report_unsupported, pretty_block_text
 from leapp.utils.report import fetch_upgrade_report_messages, generate_report_file
+from leapp.models import ErrorModel
+
+
 
 
 def disable_database_sync():
@@ -236,3 +241,61 @@ def process_report_schema(args, configuration):
         raise CommandError('--report-schema version can not be greater that the '
                            'actual {} one.'.format(default_report_schema))
     return args.report_schema or default_report_schema
+
+
+# TODO: This and the following functions should eventually be placed into the
+# leapp.utils.output module.
+def pretty_block_log(string, logger_level, width=60):
+    log_str = "\n{separator}\n{text}\n{separator}\n".format(
+        separator="=" * width,
+        text=string.center(width))
+    logger_level(log_str)
+
+
+@contextmanager
+def format_actor_exceptions(logger):
+    try:
+        try:
+            yield
+        except LeappRuntimeError as e:
+            # TODO: This only reports the actor that raised an exception
+            # and the return code.
+            # The traceback gets eaten on the framework level, and is only
+            # seen in stderr. Changing that will require modifying the framework
+            # code itself.
+            msg = '{} - Please check the above details'.format(e.message)
+            sys.stderr.write("\n")
+            sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
+            logger.error(e.message)
+    finally:
+        pass
+
+
+def log_errors(errors, logger):
+    if errors:
+        pretty_block_log("ERRORS", logger.info)
+
+        for error in errors:
+            model = ErrorModel.create(json.loads(error['message']['data']))
+            logger.error("{time} [{severity}] Actor: {actor}\nMessage: {message}\n".format(
+                severity=model.severity.upper(),
+                message=model.message, time=model.time, actor=model.actor))
+            if model.details:
+                print('Summary:')
+                details = json.loads(model.details)
+                for detail in details:
+                    print('    {k}: {v}'.format(
+                        k=detail.capitalize(),
+                        v=details[detail].rstrip().replace('\n', '\n' + ' ' * (6 + len(detail)))))
+
+
+def log_inhibitors(context_id, logger):
+    from leapp.reporting import Flags  # pylint: disable=import-outside-toplevel
+    reports = fetch_upgrade_report_messages(context_id)
+    inhibitors = [report for report in reports if Flags.INHIBITOR in report.get('flags', [])]
+    if inhibitors:
+        pretty_block_log("UPGRADE INHIBITED", logger.error)
+        logger.error('Upgrade has been inhibited due to the following problems:')
+        for position, report in enumerate(inhibitors, start=1):
+            logger.error('{idx:5}. Inhibitor: {title}'.format(idx=position, title=report['title']))
+        logger.info('Consult the pre-upgrade report for details and possible remediation.')

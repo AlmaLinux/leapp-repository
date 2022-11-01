@@ -86,7 +86,7 @@ def upgrade(args, breadcrumbs):
     workflow = repositories.lookup_workflow('IPUWorkflow')(auto_reboot=args.reboot)
     util.process_whitelist_experimental(repositories, workflow, configuration, logger)
     util.warn_if_unsupported(configuration)
-    with beautify_actor_exception():
+    with util.format_actor_exceptions(logger):
         logger.info("Using answerfile at %s", answerfile_path)
         workflow.load_answers(answerfile_path, userchoices_path)
 
@@ -99,13 +99,16 @@ def upgrade(args, breadcrumbs):
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
     report_errors(workflow.errors)
+    util.log_errors(workflow.errors, logger)
     report_inhibitors(context)
+    util.log_inhibitors(context, logger)
     util.generate_report_files(context, report_schema)
     report_files = util.get_cfg_files('report', cfg)
     log_files = util.get_cfg_files('logs', cfg)
     report_info(report_files, log_files, answerfile_path, fail=workflow.failure)
 
     if workflow.failure:
+        logger.error("Upgrade workflow failed, check log for details")
         sys.exit(1)
 
 
