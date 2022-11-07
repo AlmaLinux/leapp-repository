@@ -72,6 +72,8 @@ Check the leapp logs for .rpmnew configuration files that may have been created 
 
 ### What data should be provided when making a report?
 
+Before gathering data, if possible, run the *leapp* command that encountered an issue with the `--debug` flag, e.g.: `leapp upgrade --debug`.
+
 - When filing an issue, include:
   - Steps to reproduce the issue
   - *All files in /var/log/leapp*
