@@ -101,18 +101,22 @@ def _get_vendor_custom_repos(enabled_repos, mapping_list):
 
     for vendor_repolist in api.consume(VendorCustomTargetRepositoryList):
         vendor_repomap = map_dict[vendor_repolist.vendor]
-        # Get all source repositories for the vendor mapping.
-        sources = [ven_map.source for ven_map in vendor_repomap.mapping]
-        # Find the beta channel sources for the vendor.
-        beta_sources = [x.repoid for x in vendor_repomap.repositories if x.repoid in sources and x.channel == 'beta']
+
+        # Find the beta channel repositories for the vendor.
+        beta_repos = [
+            x.repoid for x in vendor_repomap.repositories if x.channel == "beta"
+        ]
+        api.current_logger().debug(
+            "Vendor {} beta repos: {}".format(vendor_repolist.vendor, beta_repos)
+        )
 
         # Are any of the beta repos present and enabled on the system?
-        if any(rep in beta_sources for rep in enabled_repos):
-            # If so, return all repos including beta.
+        if any(rep in beta_repos for rep in enabled_repos):
+            # If so, use all repos including beta in the upgrade.
             vendor_repos = vendor_repolist.repos
         else:
             # Otherwise filter beta repos out.
-            vendor_repos = [repo for repo in vendor_repolist.repos if repo.name not in beta_sources]
+            vendor_repos = [repo for repo in vendor_repolist.repos if repo.repoid not in beta_repos]
 
         result.extend([CustomTargetRepository(
             repoid=repo.repoid,
@@ -132,14 +136,16 @@ def process():
 
     mapping_list = list(api.consume(RepositoriesMapping))
 
-    # Custom repos aren't checked on what channel they are on.
-    # This means beta repos are included into the upgrade no matter what.
-    # We should check for beta repo presence separately, maybe?
-    # Also check if they're active.
     custom_repos = _get_custom_target_repos()
     vendor_repos = _get_vendor_custom_repos(enabled_repoids, mapping_list)
 
+    api.current_logger().debug('Custom repos: {}'.format([f.repoid for f in custom_repos]))
+    api.current_logger().debug('Vendor repos: {}'.format([f.repoid for f in vendor_repos]))
+
     custom_repos.extend(vendor_repos)
+
+    api.current_logger().debug('Used repos: {}'.format(used_repoids_dict.keys()))
+    api.current_logger().debug('Enabled repos: {}'.format(list(enabled_repoids)))
 
     # TODO(pstodulk): isn't that a potential issue that we map just enabled repos
     # instead of enabled + used repos??
@@ -150,6 +156,7 @@ def process():
 
     # Now get the info what should be the target RHEL repositories
     expected_repos = repomap.get_expected_target_pesid_repos(enabled_repoids)
+    api.current_logger().debug('Expected repos: {}'.format(expected_repos))
     target_rhel_repoids = set()
     for target_pesid, target_pesidrepo in expected_repos.items():
         if not target_pesidrepo:
@@ -180,7 +187,7 @@ def process():
 
     # create the final lists and sort them (for easier testing)
     rhel_repos = [RHELTargetRepository(repoid=repoid) for repoid in sorted(target_rhel_repoids)]
-    custom_repos = [repo for repo in filtered_custom_repos if repo.repoid not in excluded_repoids]
+    custom_repos = [repo for repo in custom_repos if repo.repoid not in excluded_repoids]
     custom_repos = sorted(custom_repos, key=lambda x: x.repoid)
 
     if skipped_repoids:

@@ -3,6 +3,7 @@ import os
 from leapp.libraries.common import repofileutils
 from leapp.libraries.stdlib import api
 from leapp.models import (
+    CustomTargetRepository,
     CustomTargetRepositoryFile,
     ActiveVendorList,
     VendorCustomTargetRepositoryList,
@@ -53,8 +54,17 @@ def process():
 
         api.produce(CustomTargetRepositoryFile(file=full_repo_path))
 
+        custom_vendor_repos = [
+            CustomTargetRepository(
+                repoid=repo.repoid,
+                name=repo.name,
+                baseurl=repo.baseurl,
+                enabled=repo.enabled,
+            ) for repo in repofile.data
+        ]
+
         api.produce(
-            VendorCustomTargetRepositoryList(vendor=vendor_name, repos=repofile.data)
+            VendorCustomTargetRepositoryList(vendor=vendor_name, repos=custom_vendor_repos)
         )
 
     api.current_logger().info(
