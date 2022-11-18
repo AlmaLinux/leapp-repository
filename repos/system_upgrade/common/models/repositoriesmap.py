@@ -92,4 +92,4 @@ class RepositoriesMapping(Model):
 
     mapping = fields.List(fields.Model(RepoMapEntry), default=[])
     repositories = fields.List(fields.Model(PESIDRepositoryEntry), default=[])
-
+    vendor = fields.Nullable(fields.String())
