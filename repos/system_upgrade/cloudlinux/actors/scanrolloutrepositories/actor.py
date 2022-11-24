@@ -6,6 +6,7 @@ from leapp.models import (
     UsedRepositories
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 
 class ScanRolloutRepositories(Actor):
@@ -24,5 +25,6 @@ class ScanRolloutRepositories(Actor):
     produces = (CustomTargetRepositoryFile, CustomTargetRepository)
     tags = (FactsPhaseTag, IPUWorkflowTag)
 
+    @run_on_cloudlinux
     def process(self):
         scanrolloutrepositories.process()
