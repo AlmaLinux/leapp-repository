@@ -225,6 +225,11 @@ def _prep_repository_access(context, target_userspace):
     target_etc = os.path.join(target_userspace, 'etc')
     target_yum_repos_d = os.path.join(target_etc, 'yum.repos.d')
     backup_yum_repos_d = os.path.join(target_etc, 'yum.repos.d.backup')
+
+    # Copy RHN data independent from RHSM config
+    run(['rm', '-rf', os.path.join(target_etc, 'sysconfig/rhn')])
+    context.copytree_from('/etc/sysconfig/rhn', os.path.join(target_etc, 'sysconfig/rhn'))
+
     if not rhsm.skip_rhsm():
         run(['rm', '-rf', os.path.join(target_etc, 'pki')])
         run(['rm', '-rf', os.path.join(target_etc, 'rhsm')])
