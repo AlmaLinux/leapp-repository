@@ -59,7 +59,7 @@ class Action(IntEnum):
     MERGED = 5
     MOVED = 6
     RENAMED = 7
-    SAMEVER_UPDATED = 8
+    REINSTALLED = 8
 
 
 class Task(IntEnum):
@@ -575,7 +575,7 @@ def process_events(releases, events, installed_pkgs):
                 if event.action in [Action.RENAMED, Action.REPLACED, Action.REMOVED]:
                     add_packages_to_tasks(current, event.in_pkgs, Task.REMOVE)
 
-                if event.action == Action.SAMEVER_UPDATED:
+                if event.action == Action.REINSTALLED:
                     # These packages have the same version string but differ in contents.
                     # noarch packages will most likely work fine after the upgrade, but
                     # the others may break due to library/binary incompatibilities.
@@ -811,7 +811,7 @@ def add_output_pkgs_to_transaction_conf(transaction_configuration, events):
     message = 'The following target system packages will not be installed:\n'
 
     for event in events:
-        if event.action in (Action.SPLIT, Action.MERGED, Action.REPLACED, Action.RENAMED, Action.SAMEVER_UPDATED):
+        if event.action in (Action.SPLIT, Action.MERGED, Action.REPLACED, Action.RENAMED, Action.REINSTALLED):
             if all([pkg.name in transaction_configuration.to_remove for pkg in event.in_pkgs]):
                 transaction_configuration.to_remove.extend(pkg.name for pkg in event.out_pkgs)
                 message += (

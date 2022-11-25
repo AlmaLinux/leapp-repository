@@ -190,14 +190,15 @@ To add new rules to the list, add a new entry to the `packageinfo` array.
 Required fields:
 
 - action: what action to perform on the listed package
-- 0 - present
-- 1 - removed
-- 2 - deprecated
-- 3 - replaced
-- 4 - split
-- 5 - merged
-- 6 - moved to new repository
-- 7 - renamed
+    - 0 - present
+    - 1 - removed
+    - 2 - deprecated
+    - 3 - replaced
+    - 4 - split
+    - 5 - merged
+    - 6 - moved to new repository
+    - 7 - renamed
+    - 8 - reinstalled
 - arches: what system architectures the listed entry relates to
 - id: entry ID, must be unique
 - in_packageset: set of packages on the old system
