@@ -59,12 +59,14 @@ class Action(IntEnum):
     MERGED = 5
     MOVED = 6
     RENAMED = 7
+    SAMEVER_UPDATED = 8
 
 
 class Task(IntEnum):
     KEEP = 0
     INSTALL = 1
     REMOVE = 2
+    REINSTALL = 3
 
     def past(self):
         return ['kept', 'installed', 'removed'][self]
@@ -240,6 +242,7 @@ def get_transaction_configuration():
         transaction_configuration.to_install.extend(tasks.to_install)
         transaction_configuration.to_remove.extend(tasks.to_remove)
         transaction_configuration.to_keep.extend(tasks.to_keep)
+        transaction_configuration.to_reinstall.extend(tasks.to_reinstall)
     return transaction_configuration
 
 
@@ -572,6 +575,13 @@ def process_events(releases, events, installed_pkgs):
                 if event.action in [Action.RENAMED, Action.REPLACED, Action.REMOVED]:
                     add_packages_to_tasks(current, event.in_pkgs, Task.REMOVE)
 
+                if event.action == Action.SAMEVER_UPDATED:
+                    # These packages have the same version string but differ in contents.
+                    # noarch packages will most likely work fine after the upgrade, but
+                    # the others may break due to library/binary incompatibilities.
+                    # This is why we mark them for reinstallation.
+                    add_packages_to_tasks(current, event.out_pkgs, Task.REINSTALL)
+
         do_not_remove = set()
         for package in current[Task.REMOVE]:
             if package in tasks[Task.KEEP]:
@@ -579,6 +589,11 @@ def process_events(releases, events, installed_pkgs):
                     '{p} :: {r} to be kept / currently removed - removing package'.format(
                         p=package[0], r=current[Task.REMOVE][package]))
                 del tasks[Task.KEEP][package]
+            if package in tasks[Task.REINSTALL]:
+                api.current_logger().warning(
+                    '{p} :: {r} to be reinstalled / currently removed - removing package'.format(
+                        p=package[0], r=current[Task.REMOVE][package]))
+                del tasks[Task.REINSTALL][package]
             elif package in tasks[Task.INSTALL]:
                 api.current_logger().warning(
                     '{p} :: {r} to be installed / currently removed - ignoring tasks'.format(
@@ -606,6 +621,11 @@ def process_events(releases, events, installed_pkgs):
                     '{p} :: {r} to be removed / currently kept - keeping package'.format(
                         p=package[0], r=current[Task.KEEP][package]))
                 del tasks[Task.REMOVE][package]
+            if package in tasks[Task.REINSTALL]:
+                api.current_logger().warning(
+                    '{p} :: {r} to be reinstalled / currently kept - keeping package'.format(
+                        p=package[0], r=current[Task.KEEP][package]))
+                del tasks[Task.REINSTALL][package]
 
         for key in Task:  # noqa: E1133; pylint: disable=not-an-iterable
             for package in current[key]:
@@ -617,7 +637,9 @@ def process_events(releases, events, installed_pkgs):
 
     map_repositories(tasks[Task.INSTALL])
     map_repositories(tasks[Task.KEEP])
+    map_repositories(tasks[Task.REINSTALL])
     filter_out_pkgs_in_blacklisted_repos(tasks[Task.INSTALL])
+    filter_out_pkgs_in_blacklisted_repos(tasks[Task.REINSTALL])
     resolve_conflicting_requests(tasks)
 
     return tasks
@@ -696,15 +718,24 @@ def resolve_conflicting_requests(tasks):
         -> without this function, sip would reside in both [Task.KEEP] and [Task.REMOVE], causing a dnf conflict
     """
     pkgs_in_conflict = set()
-    for pkg in list(tasks[Task.INSTALL].keys()) + list(tasks[Task.KEEP].keys()):
+    preserve_keys = (
+        list(tasks[Task.INSTALL].keys())
+        + list(tasks[Task.KEEP].keys())
+        + list(tasks[Task.REINSTALL].keys())
+    )
+
+    for pkg in preserve_keys:
         if pkg in tasks[Task.REMOVE]:
             pkgs_in_conflict.add(pkg)
             del tasks[Task.REMOVE][pkg]
 
     if pkgs_in_conflict:
-        api.current_logger().debug('The following packages were marked to be kept/installed and removed at the same'
-                                   ' time. Leapp will upgrade them.\n{}'.format(
-                                       '\n'.join(sorted(pkg[0] for pkg in pkgs_in_conflict))))
+        api.current_logger().debug(
+            "The following packages were marked to be kept/installed/reinstalled"
+            " and removed at the same time. Leapp will upgrade them.\n{}".format(
+                "\n".join(sorted(pkg[0] for pkg in pkgs_in_conflict))
+            )
+        )
 
 
 def get_repositories_blacklisted():
@@ -780,7 +811,7 @@ def add_output_pkgs_to_transaction_conf(transaction_configuration, events):
     message = 'The following target system packages will not be installed:\n'
 
     for event in events:
-        if event.action in (Action.SPLIT, Action.MERGED, Action.REPLACED, Action.RENAMED):
+        if event.action in (Action.SPLIT, Action.MERGED, Action.REPLACED, Action.RENAMED, Action.SAMEVER_UPDATED):
             if all([pkg.name in transaction_configuration.to_remove for pkg in event.in_pkgs]):
                 transaction_configuration.to_remove.extend(pkg.name for pkg in event.out_pkgs)
                 message += (
@@ -807,6 +838,7 @@ def filter_out_transaction_conf_pkgs(tasks, transaction_configuration):
     """
     do_not_keep = [p for p in tasks[Task.KEEP] if p[0] in transaction_configuration.to_remove]
     do_not_install = [p for p in tasks[Task.INSTALL] if p[0] in transaction_configuration.to_remove]
+    do_not_reinstall = [p for p in tasks[Task.REINSTALL] if p[0] in transaction_configuration.to_remove]
     do_not_remove = [p for p in tasks[Task.REMOVE] if p[0] in transaction_configuration.to_install
                      or p[0] in transaction_configuration.to_keep]
 
@@ -820,6 +852,12 @@ def filter_out_transaction_conf_pkgs(tasks, transaction_configuration):
         api.current_logger().debug('The following packages will not be installed because of the'
                                    ' /etc/leapp/transaction/to_remove transaction configuration file:'
                                    '\n- ' + '\n- '.join(p[0] for p in sorted(do_not_install)))
+    if do_not_reinstall:
+        for pkg in do_not_reinstall:
+            tasks[Task.REINSTALL].pop(pkg)
+        api.current_logger().debug('The following packages will not be reinstalled because of the'
+                                   ' /etc/leapp/transaction/to_remove transaction configuration file:'
+                                   '\n- ' + '\n- '.join(p[0] for p in sorted(do_not_reinstall)))
     if do_not_remove:
         for pkg in do_not_remove:
             tasks[Task.REMOVE].pop(pkg)
@@ -844,17 +882,20 @@ def produce_messages(tasks):
     # Type casting to list to be Py2&Py3 compatible as on Py3 keys() returns dict_keys(), not a list
     to_install_pkgs = sorted(tasks[Task.INSTALL].keys())
     to_remove_pkgs = sorted(tasks[Task.REMOVE].keys())
+    to_reinstall_pkgs = sorted(tasks[Task.REINSTALL].keys())
     to_enable_repos = sorted(set(tasks[Task.INSTALL].values()) | set(tasks[Task.KEEP].values()))
 
-    if to_install_pkgs or to_remove_pkgs:
+    if to_install_pkgs or to_remove_pkgs or to_reinstall_pkgs:
         enabled_modules = _get_enabled_modules()
         modules_to_enable = [Module(name=p[1][0], stream=p[1][1]) for p in to_install_pkgs if p[1]]
         modules_to_reset = enabled_modules
         to_install_pkg_names = [p[0] for p in to_install_pkgs]
         to_remove_pkg_names = [p[0] for p in to_remove_pkgs]
+        to_reinstall_pkg_names = [p[0] for p in to_reinstall_pkgs]
 
         api.produce(PESRpmTransactionTasks(to_install=to_install_pkg_names,
                                            to_remove=to_remove_pkg_names,
+                                           to_reinstall=to_reinstall_pkg_names,
                                            modules_to_enable=modules_to_enable,
                                            modules_to_reset=modules_to_reset))
 
