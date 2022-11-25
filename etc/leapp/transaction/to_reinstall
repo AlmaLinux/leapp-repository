@@ -1,0 +1,3 @@
+### List of packages (each on new line) to be reinstalled to the upgrade transaction
+### Useful for packages that have identical version strings but contain binary changes between major OS versions
+### Packages that aren't installed will be skipped
