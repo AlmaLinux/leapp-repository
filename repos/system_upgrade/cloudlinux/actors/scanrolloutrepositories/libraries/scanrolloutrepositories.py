@@ -36,11 +36,14 @@ def process():
             api.current_logger().debug("Rollout file {} has used repositories, adding".format(reponame))
 
         for repo in repofile.data:
-            api.produce(CustomTargetRepository(
-                repoid=repo.repoid,
-                name=repo.name,
-                baseurl=repo.baseurl,
-                enabled=repo.enabled,
-            ))
+            # Don't enable all the rollout repositories wholesale, some might
+            # be disabled and we want to keep that configuration.
+            if repo.enabled:
+                api.produce(CustomTargetRepository(
+                    repoid=repo.repoid,
+                    name=repo.name,
+                    baseurl=repo.baseurl,
+                    enabled=repo.enabled,
+                ))
 
         api.produce(CustomTargetRepositoryFile(file=full_repo_path))
