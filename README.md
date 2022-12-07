@@ -204,7 +204,9 @@ Required fields:
     - 4 - split
         - install parts of the `out_packageset` that are not present on the system
         - keep the present `out_packageset`
-        - remove packages from `in_packageset` that are no longer on the target system
+        - remove packages from `in_packageset` that are not present in `out_packageset`
+            - in case of package X being split to Y and Z, package X will be removed
+            - in case of package X being split to X and Y, package X will **not** be removed
     - 5 - merged
         - same as `split`
         - additional behaviour present, see below
