@@ -23,7 +23,8 @@ VENDOR_SIGS = {
            'bc4d06a08d8b756f'],
     'eurolinux': ['75c333f418cd4a9e',
                   'b413acad6275f250',
-                  'f7ad3e5a1c9fd080']
+                  'f7ad3e5a1c9fd080'],
+    'scientific': ['b0b4183f192a7d7d']
 }
 
 VENDOR_PACKAGERS = {
@@ -33,6 +34,7 @@ VENDOR_PACKAGERS = {
     "almalinux": "AlmaLinux Packaging Team",
     "rocky": "infrastructure@rockylinux.org",
     "eurolinux": "EuroLinux",
+    "scientific": "Scientific Linux",
 }
 
 
