@@ -1,5 +1,6 @@
-import json
 import os
+import os.path
+import json
 
 from leapp.libraries.common import mounting, utils
 from leapp.libraries.stdlib import api
@@ -104,3 +105,22 @@ def get_duplicate_repositories(repofiles):
     rf_repos = {repofile.file: [repo.repoid for repo in repofile.data] for repofile in repofiles}
     repos = _invert_dict(rf_repos)
     return {repo: set(rfiles) for repo, rfiles in repos.items() if len(set(rfiles)) > 1}
+
+
+def check_gpgkey_existence(repodata):
+    file_prefix = 'file:/'
+
+    repos_with_missing_keys = []
+    missing_keys = []
+
+    for repo in repodata:
+        repo_addfields = json.loads(repo.additional_fields)
+        if repo_addfields['gpgkey']:
+            repo_gpgkey = repo_addfields['gpgkey']
+            if file_prefix in repo_gpgkey:
+                gpgkey_path = repo_gpgkey.split(file_prefix)[1]
+                if not os.path.isfile(gpgkey_path):
+                    repos_with_missing_keys.append(repo)
+                    missing_keys.append(gpgkey_path)
+
+    return repos_with_missing_keys, missing_keys
