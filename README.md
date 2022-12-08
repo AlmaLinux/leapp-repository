@@ -217,7 +217,7 @@ Required fields:
         - remove the `in_packageset` and install the `out_packageset` if not installed
         - if already installed, keep the `out_packageset` as-is
     - 8 - reinstalled
-        - reinstall the package during the upgrade transaction
+        - reinstall the `in_packageset` package during the upgrade transaction
         - mostly useful for packages that have the same version string between major versions, and thus won't be upgraded automatically
     - Additional notes:
         - any event except `present` is ignored if any of packages in `in_packageset` are marked for removal

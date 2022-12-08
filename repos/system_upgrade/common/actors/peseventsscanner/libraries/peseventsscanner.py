@@ -580,7 +580,7 @@ def process_events(releases, events, installed_pkgs):
                     # noarch packages will most likely work fine after the upgrade, but
                     # the others may break due to library/binary incompatibilities.
                     # This is why we mark them for reinstallation.
-                    add_packages_to_tasks(current, event.out_pkgs, Task.REINSTALL)
+                    add_packages_to_tasks(current, event.in_pkgs, Task.REINSTALL)
 
         do_not_remove = set()
         for package in current[Task.REMOVE]:
