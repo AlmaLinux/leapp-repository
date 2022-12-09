@@ -1,6 +1,11 @@
 from leapp.actors import Actor
 from leapp.libraries.actor import scanvendorrepofiles
-from leapp.models import CustomTargetRepository, CustomTargetRepositoryFile, ActiveVendorList
+from leapp.models import (
+    CustomTargetRepositoryFile,
+    ActiveVendorList,
+    VendorCustomTargetRepositoryList,
+    Report
+)
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
 
@@ -12,8 +17,12 @@ class ScanVendorRepofiles(Actor):
     """
 
     name = "scan_vendor_repofiles"
-    consumes = (ActiveVendorList)
-    produces = (CustomTargetRepository, CustomTargetRepositoryFile)
+    consumes = ActiveVendorList
+    produces = (
+        CustomTargetRepositoryFile,
+        VendorCustomTargetRepositoryList,
+        Report
+    )
     tags = (FactsPhaseTag, IPUWorkflowTag)
 
     def process(self):

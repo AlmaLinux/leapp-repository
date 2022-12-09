@@ -24,7 +24,8 @@ VENDOR_SIGS = {
     'scientific': ['b0b4183f192a7d7d'],
     'eurolinux': ['75c333f418cd4a9e',
                   'b413acad6275f250',
-                  'f7ad3e5a1c9fd080']
+                  'f7ad3e5a1c9fd080'],
+    'scientific': ['b0b4183f192a7d7d']
 }
 
 VENDOR_PACKAGERS = {
@@ -94,6 +95,21 @@ class VendorSignedRpmScanner(Actor):
             """Whitelist the katello package."""
             return pkg.name.startswith("katello-ca-consumer")
 
+        def has_cpanel_prefix(pkg):
+            """
+            Whitelist the cPanel packages.
+            A side effect of the cPanel's deployment method is that its packages both have no
+            PGP signature and aren't associated with any package repository.
+            They do, however, have a specific naming scheme that can be used to include them into
+            the upgrade process.
+            """
+
+            # NOTE: if another case like this and the above katello occurs, consider adding a
+            # mechanism (a third-party extension) to do this in a way that allows extending it to
+            # other configurations.
+            # A separate file for the "vendors.d" folder with package name wildcards?
+            return pkg.name.startswith("cpanel-")
+
         def is_azure_pkg(pkg):
             """Whitelist Azure config package."""
             upg_path = rhui.get_upg_path()
@@ -111,6 +127,7 @@ class VendorSignedRpmScanner(Actor):
                         has_vendorsig(pkg),
                         is_gpg_pubkey(pkg),
                         has_katello_prefix(pkg),
+                        has_cpanel_prefix(pkg),
                         is_azure_pkg(pkg),
                     ]
                 ):

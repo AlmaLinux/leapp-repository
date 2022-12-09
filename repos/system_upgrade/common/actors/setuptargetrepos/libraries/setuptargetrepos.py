@@ -12,7 +12,8 @@ from leapp.models import (
     RHUIInfo,
     SkippedRepositories,
     TargetRepositories,
-    UsedRepositories
+    UsedRepositories,
+    VendorCustomTargetRepositoryList
 )
 
 
@@ -58,11 +59,11 @@ def _get_used_repo_dict():
     return used
 
 
-def _setup_repomap_handler(src_repoids):
+def _setup_repomap_handler(src_repoids, mapping_list):
     combined_mapping = []
     combined_repositories = []
     # Depending on whether there are any vendors present, we might get more than one message.
-    for msg in api.consume(RepositoriesMapping):
+    for msg in mapping_list:
         combined_mapping.extend(msg.mapping)
         combined_repositories.extend(msg.repositories)
 
@@ -88,22 +89,74 @@ def _get_mapped_repoids(repomap, src_repoids):
     return mapped_repoids
 
 
+def _get_vendor_custom_repos(enabled_repos, mapping_list):
+    # Look at what source repos from the vendor mapping were enabled.
+    # If any of them are in beta, include vendor's custom repos in the list.
+    # Otherwise skip them.
+
+    result = []
+
+    # Build a dict of vendor mappings for easy lookup.
+    map_dict = {mapping.vendor: mapping for mapping in mapping_list if mapping.vendor}
+
+    for vendor_repolist in api.consume(VendorCustomTargetRepositoryList):
+        vendor_repomap = map_dict[vendor_repolist.vendor]
+
+        # Find the beta channel repositories for the vendor.
+        beta_repos = [
+            x.repoid for x in vendor_repomap.repositories if x.channel == "beta"
+        ]
+        api.current_logger().debug(
+            "Vendor {} beta repos: {}".format(vendor_repolist.vendor, beta_repos)
+        )
+
+        # Are any of the beta repos present and enabled on the system?
+        if any(rep in beta_repos for rep in enabled_repos):
+            # If so, use all repos including beta in the upgrade.
+            vendor_repos = vendor_repolist.repos
+        else:
+            # Otherwise filter beta repos out.
+            vendor_repos = [repo for repo in vendor_repolist.repos if repo.repoid not in beta_repos]
+
+        result.extend([CustomTargetRepository(
+            repoid=repo.repoid,
+            name=repo.name,
+            baseurl=repo.baseurl,
+            enabled=repo.enabled,
+        ) for repo in vendor_repos])
+
+    return result
+
+
 def process():
     # load all data / messages
     used_repoids_dict = _get_used_repo_dict()
     enabled_repoids = _get_enabled_repoids()
     excluded_repoids = _get_blacklisted_repoids()
+
+    mapping_list = list(api.consume(RepositoriesMapping))
+
     custom_repos = _get_custom_target_repos()
+    vendor_repos = _get_vendor_custom_repos(enabled_repoids, mapping_list)
+
+    api.current_logger().debug('Custom repos: {}'.format([f.repoid for f in custom_repos]))
+    api.current_logger().debug('Vendor repos: {}'.format([f.repoid for f in vendor_repos]))
+
+    custom_repos.extend(vendor_repos)
+
+    api.current_logger().debug('Used repos: {}'.format(used_repoids_dict.keys()))
+    api.current_logger().debug('Enabled repos: {}'.format(list(enabled_repoids)))
 
     # TODO(pstodulk): isn't that a potential issue that we map just enabled repos
     # instead of enabled + used repos??
     # initialise basic data
-    repomap = _setup_repomap_handler(enabled_repoids)
+    repomap = _setup_repomap_handler(enabled_repoids, mapping_list)
     mapped_repoids = _get_mapped_repoids(repomap, enabled_repoids)
     skipped_repoids = enabled_repoids & set(used_repoids_dict.keys()) - mapped_repoids
 
     # Now get the info what should be the target RHEL repositories
     expected_repos = repomap.get_expected_target_pesid_repos(enabled_repoids)
+    api.current_logger().debug('Expected repos: {}'.format(expected_repos))
     target_rhel_repoids = set()
     for target_pesid, target_pesidrepo in expected_repos.items():
         if not target_pesidrepo:

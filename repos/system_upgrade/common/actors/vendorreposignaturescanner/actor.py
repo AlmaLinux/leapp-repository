@@ -11,8 +11,10 @@ SIGFILE_SUFFIX = ".sigs"
 
 class VendorRepoSignatureScanner(Actor):
     """
-    Produce VendorSignatures msgs for the vendor signature files inside the
+    Produce VendorSignatures messages for the vendor signature files inside the
     <VENDORS_DIR>.
+    These messages are used to extend the list of pakcages Leapp will consider
+    signed and will attempt to upgrade.
 
     The messages are produced only if a "from" vendor repository
     listed indide its map matched one of the repositories active on the system.

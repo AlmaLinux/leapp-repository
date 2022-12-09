@@ -1,7 +1,7 @@
 from leapp import reporting
 from leapp.actors import Actor
 from leapp.exceptions import StopActorExecutionError
-from leapp.libraries.actor.opensshpermitrootlogincheck import semantics_changes
+from leapp.libraries.actor.opensshpermitrootlogincheck import semantics_changes, add_permitrootlogin_conf
 from leapp.libraries.stdlib import api
 from leapp.models import OpenSshConfig, Report
 from leapp.reporting import create_report
@@ -39,28 +39,32 @@ class OpenSshPermitRootLoginCheck(Actor):
 
         resources = [
             reporting.RelatedResource('package', 'openssh-server'),
-            reporting.RelatedResource('file', '/etc/ssh/sshd_config')
+            reporting.RelatedResource('file', '/etc/ssh/sshd_config'),
+            reporting.RelatedResource('file', '/etc/ssh/sshd_config.leapp_backup')
         ]
-        # When the configuration does not contain the PermitRootLogin directive and
-        # the configuration file was locally modified, it will not get updated by
-        # RPM and the user might be locked away from the server. Warn the user here.
-        if not config.permit_root_login and config.modified:
+        if not config.permit_root_login:
+            add_permitrootlogin_conf()
             create_report([
-                reporting.Title('Possible problems with remote login using root account'),
+                reporting.Title('SSH configuration automatically modified to permit root login'),
                 reporting.Summary(
-                    'OpenSSH configuration file does not explicitly state '
-                    'the option PermitRootLogin in sshd_config file, '
-                    'which will default in RHEL8 to "prohibit-password".'
+                    'Your OpenSSH configuration file does not explicitly state '
+                    'the option PermitRootLogin in sshd_config file. '
+                    'Its default is "yes" in RHEL7, but will change in '
+                    'RHEL8 to "prohibit-password", which may affect your ability '
+                    'to log onto this machine after the upgrade. '
+                    'To prevent this from occuring, the PermitRootLogin option '
+                    'has been explicity set to "yes" to preserve the default behaivour '
+                    'after migration.'
+                    'The original configuration file has been backed up to'
+                    '/etc/ssh/sshd_config.leapp_backup'
                 ),
-                reporting.Severity(reporting.Severity.HIGH),
+                reporting.Severity(reporting.Severity.MEDIUM),
                 reporting.Tags(COMMON_REPORT_TAGS),
                 reporting.Remediation(
-                    hint='If you depend on remote root logins using '
-                         'passwords, consider setting up a different '
-                         'user for remote administration or adding '
-                         '"PermitRootLogin yes" to sshd_config.'
-                ),
-                reporting.Flags([reporting.Flags.INHIBITOR])
+                    hint='If you would prefer to configure the root login policy yourself, '
+                         'consider setting the PermitRootLogin option '
+                         'in sshd_config explicitly.'
+                )
             ] + resources)
 
         # Check if there is at least one PermitRootLogin other than "no"
@@ -68,7 +72,7 @@ class OpenSshPermitRootLoginCheck(Actor):
         # This usually means some more complicated setup depending on the
         # default value being globally "yes" and being overwritten by this
         # match block
-        if semantics_changes(config):
+        elif semantics_changes(config):
             create_report([
                 reporting.Title('OpenSSH configured to allow root login'),
                 reporting.Summary(
@@ -76,7 +80,7 @@ class OpenSshPermitRootLoginCheck(Actor):
                     'blocks, but not explicitly enabled in global or '
                     '"Match all" context. This update changes the '
                     'default to disable root logins using paswords '
-                    'so your server migth get inaccessible.'
+                    'so your server might become inaccessible.'
                 ),
                 reporting.Severity(reporting.Severity.HIGH),
                 reporting.Tags(COMMON_REPORT_TAGS),

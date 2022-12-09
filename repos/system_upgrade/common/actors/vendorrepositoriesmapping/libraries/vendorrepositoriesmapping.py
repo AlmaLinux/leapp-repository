@@ -16,6 +16,10 @@ def read_repomap_file(repomap_file, read_repofile_func, vendor_name):
     try:
         repomap_data = RepoMapData.load_from_dict(json_data)
 
+        # What repositories associated with the vendor are expected to be present
+        # on a system with the current major version?
+        # We need to know that to know what to look for in currently enabled
+        # system repositories.
         api.produce(VendorSourceRepos(
             vendor=vendor_name,
             source_repoids=repomap_data.get_version_repoids(get_source_major_version())
@@ -23,9 +27,15 @@ def read_repomap_file(repomap_file, read_repofile_func, vendor_name):
 
         mapping = repomap_data.get_mappings(get_source_major_version(), get_target_major_version())
         valid_major_versions = [get_source_major_version(), get_target_major_version()]
+
+        # This RepositoriesMapping message is different from the one produced by the
+        # builtin actor because of the vendor field.
+        # It can be used later to distinguish the messages provided from vendors and the one
+        # from the OS upgrade data.
         api.produce(RepositoriesMapping(
             mapping=mapping,
-            repositories=repomap_data.get_repositories(valid_major_versions)
+            repositories=repomap_data.get_repositories(valid_major_versions),
+            vendor=vendor_name
         ))
     except ModelViolationError as err:
         err_message = (

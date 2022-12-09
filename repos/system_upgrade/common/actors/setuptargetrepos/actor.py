@@ -9,7 +9,8 @@ from leapp.models import (
     RHUIInfo,
     SkippedRepositories,
     TargetRepositories,
-    UsedRepositories
+    UsedRepositories,
+    VendorCustomTargetRepositoryList
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
@@ -31,7 +32,8 @@ class SetupTargetRepos(Actor):
                 RepositoriesFacts,
                 RepositoriesBlacklisted,
                 RHUIInfo,
-                UsedRepositories)
+                UsedRepositories,
+                VendorCustomTargetRepositoryList)
     produces = (TargetRepositories, SkippedRepositories)
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
