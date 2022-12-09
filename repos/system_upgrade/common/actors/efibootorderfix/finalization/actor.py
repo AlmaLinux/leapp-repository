@@ -31,7 +31,7 @@ class EfiFinalizationFix(Actor):
                 'Oracle Linux Server': 'redhat',
                 'Red Hat Enterprise Linux': 'redhat',
                 'Rocky Linux': 'rocky',
-                'Scientific Linux': 'scientific',
+                'Scientific Linux': 'redhat',
                 'CloudLinux': 'centos',
         }
 
