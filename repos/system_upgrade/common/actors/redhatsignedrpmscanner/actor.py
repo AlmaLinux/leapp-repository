@@ -21,7 +21,6 @@ VENDOR_SIGS = {
     'ol': ['72f97b74ec551f03',
            '82562ea9ad986da3',
            'bc4d06a08d8b756f'],
-    'scientific': ['b0b4183f192a7d7d'],
     'eurolinux': ['75c333f418cd4a9e',
                   'b413acad6275f250',
                   'f7ad3e5a1c9fd080'],
