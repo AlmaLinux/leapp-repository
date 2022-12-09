@@ -68,7 +68,6 @@ def process():
                         'Check the list of missing keys and ensure all of them are present on the system '
                         'before restarting the upgrade process.'.format(reponame)
                     ),
-                reporting.Summary(),
                 reporting.Severity(reporting.Severity.HIGH),
                 reporting.Tags([
                         reporting.Tags.FILESYSTEM,
