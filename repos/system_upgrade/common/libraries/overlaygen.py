@@ -14,11 +14,15 @@ OVERLAY_DO_NOT_MOUNT = ('tmpfs', 'devpts', 'sysfs', 'proc', 'cramfs', 'sysv', 'v
 MountPoints = namedtuple('MountPoints', ['fs_file', 'fs_vfstype'])
 
 
-def _ensure_enough_diskimage_space(space_needed, directory):
+def _ensure_enough_diskimage_space(space_needed, directory, xfs_mountpoint_count):
     stat = os.statvfs(directory)
     if (stat.f_frsize * stat.f_bavail) < (space_needed * 1024 * 1024):
         message = ('Not enough space available for creating required disk images in {directory}. ' +
                    'Needed: {space_needed} MiB').format(space_needed=space_needed, directory=directory)
+        # An arbitrary cutoff, but "how many XFS mountpoints is too much" is subjective.
+        if xfs_mountpoint_count > 10:
+            message += (". Hint: there are {} XFS mountpoints with ftype=0 on the system. Space "
+                        "required is calculated according to that amount".format(xfs_mountpoint_count))
         api.current_logger().error(message)
         raise StopActorExecutionError(message)
 
@@ -53,13 +57,14 @@ def _prepare_required_mounts(scratch_dir, mounts_dir, mount_points, xfs_info):
     if not xfs_info.mountpoints_without_ftype:
         return result
 
-    space_needed = _overlay_disk_size() * len(xfs_info.mountpoints_without_ftype)
+    xfs_noftype_mounts = len(xfs_info.mountpoints_without_ftype)
+    space_needed = _overlay_disk_size() * xfs_noftype_mounts
     disk_images_directory = os.path.join(scratch_dir, 'diskimages')
 
     # Ensure we cleanup old disk images before we check for space contraints.
     run(['rm', '-rf', disk_images_directory])
     _create_diskimages_dir(scratch_dir, disk_images_directory)
-    _ensure_enough_diskimage_space(space_needed, scratch_dir)
+    _ensure_enough_diskimage_space(space_needed, scratch_dir, xfs_noftype_mounts)
 
     mount_names = [mount_point.fs_file for mount_point in mount_points]
 
