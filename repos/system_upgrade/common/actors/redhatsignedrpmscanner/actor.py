@@ -54,9 +54,9 @@ class VendorSignedRpmScanner(Actor):
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
-        vendor = self.configuration.os_release.release_id
+        # vendor = self.configuration.os_release.release_id
         vendor_keys = sum(VENDOR_SIGS.values(), [])
-        vendor_packager = VENDOR_PACKAGERS.get(vendor, "not-available")
+        # vendor_packager = VENDOR_PACKAGERS.get(vendor, "not-available")
 
         for siglist in self.consume(VendorSignatures):
             vendor_keys.extend(siglist.sigs)
@@ -86,7 +86,7 @@ class VendorSignedRpmScanner(Actor):
             """
             return (  # pylint: disable-msg=consider-using-ternary
                 pkg.name == "gpg-pubkey"
-                and (pkg.packager.startswith(vendor_packager))
+                # and (pkg.packager.startswith(vendor_packager))
                 or all_signed
             )
 

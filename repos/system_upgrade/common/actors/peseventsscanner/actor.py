@@ -2,6 +2,7 @@ import os
 import os.path
 
 from leapp.actors import Actor
+from leapp.libraries.actor.pes_event_parsing import get_pes_events
 from leapp.libraries.actor.pes_events_scanner import process
 from leapp.models import (
     EnabledModules,
@@ -13,12 +14,13 @@ from leapp.models import (
     RepositoriesSetupTasks,
     RHUIInfo,
     RpmTransactionTasks,
-    ActiveVendorList,
+    ActiveVendorList
 )
 from leapp.reporting import Report
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 
 LEAPP_FILES_DIR = "/etc/leapp/files"
+PES_FILE_NAME = 'pes-events.json'
 VENDORS_DIR = "/etc/leapp/files/vendors.d"
 
 
@@ -45,7 +47,7 @@ class PesEventsScanner(Actor):
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
-        pes_events_scanner(LEAPP_FILES_DIR, "pes-events.json")
+        events = get_pes_events(LEAPP_FILES_DIR, PES_FILE_NAME)
 
         active_vendors = []
         for vendor_list in self.consume(ActiveVendorList):
@@ -57,4 +59,6 @@ class PesEventsScanner(Actor):
 
             for pesfile in vendor_pesfiles:
                 if pesfile[:-len(pes_json_suffix)] in active_vendors:
-                    pes_events_scanner(VENDORS_DIR, pesfile)
+                    events.extend(get_pes_events(VENDORS_DIR, PES_FILE_NAME))
+
+        process(events)

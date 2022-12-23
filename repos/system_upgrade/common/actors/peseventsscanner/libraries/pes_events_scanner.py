@@ -4,7 +4,7 @@ from functools import partial
 from leapp import reporting
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.actor import peseventsscanner_repomap
-from leapp.libraries.actor.pes_event_parsing import Action, get_pes_events, Package
+from leapp.libraries.actor.pes_event_parsing import Action, Package
 from leapp.libraries.common.config import version
 from leapp.libraries.stdlib import api
 from leapp.libraries.stdlib.config import is_verbose
@@ -128,6 +128,7 @@ def compute_pkg_changes_between_consequent_releases(source_installed_pkgs,
                                                     pkgs_to_demodularize):
     # Start with the installed packages and modify the set according to release events
     target_pkgs = set(source_installed_pkgs)
+    pkgs_to_reinstall = set(source_installed_pkgs)
 
     release_events = [e for e in events if e.to_release == release]
 
@@ -146,6 +147,8 @@ def compute_pkg_changes_between_consequent_releases(source_installed_pkgs,
                 # Remove packages with old repositories add packages with the new one
                 target_pkgs = target_pkgs.difference(event.in_pkgs)
                 target_pkgs = target_pkgs.union(event.in_pkgs)
+        elif event.action == Action.REINSTALLED:
+            pkgs_to_reinstall = pkgs_to_reinstall.union(event.out_pkgs)
         else:
             # All other packages have the same semantics - they remove their in_pkgs from the system with given
             # from_release and add out_pkgs to the system matching to_release
@@ -160,7 +163,7 @@ def compute_pkg_changes_between_consequent_releases(source_installed_pkgs,
 
         pkgs_to_demodularize = pkgs_to_demodularize.difference(event.in_pkgs)
 
-    return (target_pkgs, pkgs_to_demodularize)
+    return (target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall)
 
 
 def compute_packages_on_target_system(source_pkgs, events, releases):
@@ -177,18 +180,22 @@ def compute_packages_on_target_system(source_pkgs, events, releases):
             did_processing_cross_major_version = True
             pkgs_to_demodularize = {pkg for pkg in target_pkgs if pkg.modulestream}
 
-        target_pkgs, pkgs_to_demodularize = compute_pkg_changes_between_consequent_releases(target_pkgs, events,
-                                                                                            release, seen_pkgs,
-                                                                                            pkgs_to_demodularize)
+        (
+            target_pkgs,
+            pkgs_to_demodularize,
+            pkgs_to_reinstall,
+        ) = compute_pkg_changes_between_consequent_releases(
+            target_pkgs, events, release, seen_pkgs, pkgs_to_demodularize
+        )
         seen_pkgs = seen_pkgs.union(target_pkgs)
 
     demodularized_pkgs = {Package(pkg.name, pkg.repository, None) for pkg in pkgs_to_demodularize}
     demodularized_target_pkgs = target_pkgs.difference(pkgs_to_demodularize).union(demodularized_pkgs)
 
-    return (demodularized_target_pkgs, pkgs_to_demodularize)
+    return (demodularized_target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall)
 
 
-def compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize):
+def compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall):
     source_state_pkg_names = {pkg.name for pkg in source_pkgs}
     target_state_pkg_names = {pkg.name for pkg in target_pkgs}
 
@@ -210,6 +217,7 @@ def compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodu
 
         return PESRpmTransactionTasks(to_install=pkgs_to_install,
                                       to_remove=pkgs_to_remove,
+                                      to_reinstall=pkgs_to_reinstall,
                                       modules_to_enable=modules_to_enable,
                                       modules_to_reset=modules_to_reset)
     return None
@@ -417,9 +425,8 @@ def apply_transaction_configuration(source_pkgs):
     return source_pkgs_with_conf_applied
 
 
-def process():
-    # Retrieve data - installed_pkgs, transaction configuration, pes events
-    events = get_pes_events('/etc/leapp/files', 'pes-events.json')
+def process(events):
+    # Retrieve data - installed_pkgs, transaction configuration, etc. from pes events
     releases = get_relevant_releases(events)
     source_pkgs = get_installed_pkgs()
     source_pkgs = apply_transaction_configuration(source_pkgs)
@@ -429,7 +436,7 @@ def process():
     repoids_of_source_pkgs = {pkg.repository for pkg in source_pkgs}
 
     # Apply events - compute what packages should the target system have
-    target_pkgs, pkgs_to_demodularize = compute_packages_on_target_system(source_pkgs, events, releases)
+    target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall = compute_packages_on_target_system(source_pkgs, events, releases)
 
     # Packages coming out of the events have PESID as their repository, however, we need real repoid
     target_pkgs = replace_pesids_with_repoids_in_packages(target_pkgs, repoids_of_source_pkgs)
@@ -443,6 +450,6 @@ def process():
     api.produce(repos_to_enable)
 
     # Compare the packages on source system and the computed packages on target system and determine what to install
-    rpm_tasks = compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize)
+    rpm_tasks = compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall)
     if rpm_tasks:
         api.produce(rpm_tasks)

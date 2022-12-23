@@ -137,7 +137,18 @@ def process():
     E.g. CRB repository is provided by Red Hat but it is without the support.
     """
 
-    repo_mapping = next(api.consume(RepositoriesMapping), None)
+    composite_maps = []
+    composite_repositories = []
+
+    for mapping in api.consume(RepositoriesMapping):
+        composite_maps.extend(mapping.mapping)
+        composite_repositories.extend(mapping.repositories)
+
+    repo_mapping = RepositoriesMapping(
+        mapping=composite_maps,
+        repositories=composite_repositories
+    )
+
     repos_facts = next(api.consume(RepositoriesFacts), None)
 
     # Handle required messages not received
