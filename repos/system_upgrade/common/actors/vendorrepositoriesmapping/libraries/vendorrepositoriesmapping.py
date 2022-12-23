@@ -29,7 +29,8 @@ def read_repomap_file(repomap_file, read_repofile_func, vendor_name):
 
         api.produce(RepositoriesMapping(
             mapping=mapping,
-            repositories=repomap_data.get_repositories(valid_major_versions)
+            repositories=repomap_data.get_repositories(valid_major_versions),
+            vendor=vendor_name
         ))
     except ModelViolationError as err:
         err_message = (
