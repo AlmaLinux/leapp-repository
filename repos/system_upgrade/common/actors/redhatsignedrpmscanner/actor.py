@@ -54,9 +54,9 @@ class VendorSignedRpmScanner(Actor):
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
-        # vendor = self.configuration.os_release.release_id
+        vendor = self.configuration.os_release.release_id
         vendor_keys = sum(VENDOR_SIGS.values(), [])
-        # vendor_packager = VENDOR_PACKAGERS.get(vendor, "not-available")
+        vendor_packager = VENDOR_PACKAGERS.get(vendor, "not-available")
 
         for siglist in self.consume(VendorSignatures):
             vendor_keys.extend(siglist.sigs)
