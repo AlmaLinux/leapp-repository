@@ -98,10 +98,10 @@ def upgrade(args, breadcrumbs):
 
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
-    report_errors(workflow.errors)
     util.log_errors(workflow.errors, logger)
-    report_inhibitors(context)
     util.log_inhibitors(context, logger)
+    report_errors(workflow.errors)
+    report_inhibitors(context)
     util.generate_report_files(context, report_schema)
     report_files = util.get_cfg_files('report', cfg)
     log_files = util.get_cfg_files('logs', cfg)
