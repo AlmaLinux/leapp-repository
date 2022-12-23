@@ -1,11 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.dialogs import Dialog
 from leapp.dialogs.components import BooleanComponent
 from leapp.models import Authselect, AuthselectDecision
-from leapp.reporting import Report, create_report
-from leapp import reporting
-from leapp.tags import IPUWorkflowTag, ChecksPhaseTag
-
+from leapp.reporting import create_report, Report
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 resources = [
     reporting.RelatedResource('package', 'authselect'),
@@ -104,10 +103,10 @@ class AuthselectCheck(Actor):
                 'to authselect. Authselect call is: {}. The process will '
                 'also enable "oddjobd" systemd service on startup'.format(command)
             ),
-            reporting.Tags([
-                reporting.Tags.AUTHENTICATION,
-                reporting.Tags.SECURITY,
-                reporting.Tags.TOOLS
+            reporting.Groups([
+                reporting.Groups.AUTHENTICATION,
+                reporting.Groups.SECURITY,
+                reporting.Groups.TOOLS
             ])
         ] + resources)
 
@@ -129,10 +128,10 @@ class AuthselectCheck(Actor):
                 'to your current configuration. Therefore your '
                 'configuration will be left intact.'
             ),
-            reporting.Tags([
-                reporting.Tags.AUTHENTICATION,
-                reporting.Tags.SECURITY,
-                reporting.Tags.TOOLS
+            reporting.Groups([
+                reporting.Groups.AUTHENTICATION,
+                reporting.Groups.SECURITY,
+                reporting.Groups.TOOLS
             ]),
             reporting.Severity(reporting.Severity.INFO)
         ] + resources)
@@ -156,10 +155,10 @@ class AuthselectCheck(Actor):
                     'to this profile. Authselect call is: {}. The process will '
                     'also enable "oddjobd" systemd service on startup'.format(command)
                 ),
-                reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+                reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
                 ])
             ] + resources)
 
@@ -176,10 +175,10 @@ class AuthselectCheck(Actor):
                     'refused therefore existing configuration will be kept '
                     'intact.',
                 ),
-                reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+                reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
                 ]),
                 reporting.Remediation(commands=[[command]]),
                 reporting.Severity(reporting.Severity.MEDIUM)

@@ -8,7 +8,7 @@ from leapp import reporting
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import repofileutils
 from leapp.libraries.common.config import get_env
-from leapp.libraries.stdlib import CalledProcessError, api
+from leapp.libraries.stdlib import api, CalledProcessError
 from leapp.models import RHSMInfo
 
 _RE_REPO_UID = re.compile(r'Repo ID:\s*([^\s]+)')
@@ -216,8 +216,8 @@ def _inhibit_on_duplicate_repos(repofiles):
             .format(list_separator_fmt, list_separator_fmt.join(duplicates))
         ),
         reporting.Severity(reporting.Severity.MEDIUM),
-        reporting.Tags([reporting.Tags.REPOSITORY]),
-        reporting.Flags([reporting.Flags.INHIBITOR]),
+        reporting.Groups([reporting.Groups.REPOSITORY]),
+        reporting.Groups([reporting.Groups.INHIBITOR]),
         reporting.Remediation(hint='Remove the duplicate repository definitions.')
     ])
 

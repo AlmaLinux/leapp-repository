@@ -1,12 +1,12 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.exceptions import StopActorExecutionError
-from leapp.models import Report, TcpWrappersFacts, InstalledRedHatSignedRPM
-from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
-from leapp.libraries.stdlib import api
 from leapp.libraries.actor.tcpwrapperscheck import config_affects_daemons
 from leapp.libraries.common.rpms import create_lookup
+from leapp.libraries.stdlib import api
+from leapp.models import InstalledRedHatSignedRPM, Report, TcpWrappersFacts
 from leapp.reporting import create_report
-from leapp import reporting
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 DAEMONS = [
     ("audit", ["auditd"]),
@@ -73,8 +73,8 @@ class TcpWrappersCheck(Actor):
                     title='Replacing TCP Wrappers in RHEL 8',
                     url='https://access.redhat.com/solutions/3906701'
                 ),
-                reporting.Tags([reporting.Tags.SECURITY, reporting.Tags.NETWORK]),
-                reporting.Flags([reporting.Flags.INHIBITOR]),
+                reporting.Groups([reporting.Groups.SECURITY, reporting.Groups.NETWORK]),
+                reporting.Groups([reporting.Groups.INHIBITOR]),
                 reporting.RelatedResource('file', '/etc/hosts.allow'),
                 reporting.RelatedResource('file', '/etc/hosts.deny'),
                 reporting.RelatedResource('package', 'tcp_wrappers')

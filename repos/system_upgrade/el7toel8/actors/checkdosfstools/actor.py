@@ -1,8 +1,8 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.libraries.common.rpms import has_package
 from leapp.models import InstalledRedHatSignedRPM
-from leapp.reporting import Report, create_report
-from leapp import reporting
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
@@ -29,9 +29,9 @@ class CheckDosfstools(Actor):
                     'selected with the -r option.\n'
                 ),
                 reporting.Severity(reporting.Severity.LOW),
-                reporting.Tags([
-                        reporting.Tags.FILESYSTEM,
-                        reporting.Tags.TOOLS
+                reporting.Groups([
+                        reporting.Groups.FILESYSTEM,
+                        reporting.Groups.TOOLS
                 ]),
                 reporting.Remediation(hint='Please update your scripts to be compatible with the changes.'),
                 reporting.RelatedResource('package', 'dosfstools')

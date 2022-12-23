@@ -41,6 +41,12 @@ _COPR_REPO=$${COPR_REPO:-leapp}
 _COPR_REPO_TMP=$${COPR_REPO_TMP:-leapp-tmp}
 _COPR_CONFIG=$${COPR_CONFIG:-~/.config/copr_rh_oamg.conf}
 
+# tool used to run containers for testing and building packages
+_CONTAINER_TOOL=$${CONTAINER_TOOL:-podman}
+
+# container to run tests in
+_TEST_CONTAINER=$${TEST_CONTAINER:-rhel8}
+
 # In case just specific CHROOTs should be used for the COPR build, you can
 # set the multiple CHROOTs separated by comma in the COPR_CHROOT envar, e.g.
 # "epel-7-x86_64,epel-8-x86_64". But for the copr-cli utility, each of them
@@ -90,25 +96,36 @@ help:
 	@echo "Usage: make <target>"
 	@echo
 	@echo "Available targets are:"
-	@echo "  help                   show this text"
-	@echo "  clean                  clean the mess"
-	@echo "  prepare                clean the mess and prepare dirs"
-	@echo "  print_release          print release how it should look like with"
-	@echo "                         with the given parameters"
-	@echo "  source                 create the source tarball suitable for"
-	@echo "                         packaging"
-	@echo "  srpm                   create the SRPM"
-	@echo "  copr_build             create the COPR build using the COPR TOKEN"
-	@echo "                         - default path is: $(_COPR_CONFIG)"
-	@echo "                         - can be changed by the COPR_CONFIG env"
-	@echo "  install-deps           create python virtualenv and install there"
-	@echo "                         leapp-repository with dependencies"
-	@echo "  install-deps-fedora    create python virtualenv and install there"
-	@echo "                         leapp-repository with dependencies for Fedora OS"
-	@echo "  lint                   lint source code"
-	@echo "  lint_fix               attempt to fix isort violations inplace"
-	@echo "  test                   lint source code and run tests"
-	@echo "  test_no_lint           run tests without linting the source code"
+	@echo "  help                        show this text"
+	@echo "  clean                       clean the mess"
+	@echo "  prepare                     clean the mess and prepare dirs"
+	@echo "  print_release               print release how it should look like with"
+	@echo "                              with the given parameters"
+	@echo "  source                      create the source tarball suitable for"
+	@echo "                              packaging"
+	@echo "  srpm                        create the SRPM"
+	@echo "  build_container             create the RPM in container"
+	@echo "                              - set BUILD_CONTAINER to el7 or el8"
+	@echo "                              - don't run more than one build at the same time"
+	@echo "                                since containers operate on the same files!"
+	@echo "  copr_build                  create the COPR build using the COPR TOKEN"
+	@echo "                              - default path is: $(_COPR_CONFIG)"
+	@echo "                              - can be changed by the COPR_CONFIG env"
+	@echo "  install-deps                create python virtualenv and install there"
+	@echo "                              leapp-repository with dependencies"
+	@echo "  install-deps-fedora         create python virtualenv and install there"
+	@echo "                              leapp-repository with dependencies for Fedora OS"
+	@echo "  lint                        lint source code"
+	@echo "  lint_fix                    attempt to fix isort violations inplace"
+	@echo "  test                        lint source code and run tests"
+	@echo "  test_no_lint                run tests without linting the source code"
+	@echo "  test_container              run lint and tests in container"
+	@echo "                              - default container is 'rhel8'"
+	@echo "                              - can be changed by setting TEST_CONTAINER env"
+	@echo "  test_container_all          run lint and tests in all available containers"
+	@echo "  test_container_no_lint      run tests without linting in container, see test_container"
+	@echo "  test_container_all_no_lint  run tests without linting in all available containers"
+	@echo "  clean_containers            clean all testing and building container images (to force a rebuild for example)"
 	@echo ""
 	@echo "Targets test, lint and test_no_lint support environment variables ACTOR and"
 	@echo "TEST_LIBS."
@@ -134,6 +151,9 @@ help:
 	@echo "  PR=7 SUFFIX='my_additional_suffix' make <target>"
 	@echo "  MR=6 COPR_CONFIG='path/to/the/config/copr/file' make <target>"
 	@echo "  ACTOR=<actor> TEST_LIBS=y make test"
+	@echo "  BUILD_CONTAINER=el7 make build_container"
+	@echo "  TEST_CONTAINER=f34 make test_container"
+	@echo "  CONTAINER_TOOL=docker TEST_CONTAINER=rhel7 make test_container_no_lint"
 	@echo ""
 
 clean:
@@ -159,6 +179,7 @@ source: prepare
 	@__TIMESTAMP=$(TIMESTAMP) $(MAKE) _build_subpkg
 	@__TIMESTAMP=$(TIMESTAMP) $(MAKE) DIST_VERSION=$$(($(DIST_VERSION) + 1)) _build_subpkg
 	@tar -czf packaging/sources/deps-pkgs.tar.gz -C packaging/RPMS/noarch `ls packaging/RPMS/noarch | grep -o "[^/]*rpm$$"`
+	@rm -f packaging/RPMS/noarch/*.rpm
 
 srpm: source
 	@echo "--- Build SRPM: $(PKGNAME)-$(VERSION)-$(RELEASE).. ---"
@@ -187,6 +208,43 @@ _build_subpkg:
 		--define "el$$(($(DIST_VERSION) + 1)) 1" || FAILED=1
 	@mv packaging/$(DEPS_PKGNAME).spec.bak packaging/$(DEPS_PKGNAME).spec
 
+_build_local: source
+	@echo "--- Build RPM: $(PKGNAME)-$(VERSION)-$(RELEASE).. ---"
+	@cp packaging/$(PKGNAME).spec packaging/$(PKGNAME).spec.bak
+	@sed -i "s/1%{?dist}/$(RELEASE)%{?dist}/g" packaging/$(PKGNAME).spec
+	@rpmbuild -ba packaging/$(PKGNAME).spec \
+		--define "_sourcedir `pwd`/packaging/sources"  \
+		--define "_srcrpmdir `pwd`/packaging/SRPMS" \
+		--define "_builddir `pwd`/packaging/BUILD" \
+		--define "_buildrootdir `pwd`/packaging/BUILDROOT" \
+		--define "_rpmdir `pwd`/packaging/RPMS" \
+		--define "rhel $(DIST_VERSION)" \
+		--define "dist .el$(DIST_VERSION)" \
+		--define "el$(DIST_VERSION) 1" || FAILED=1
+	@mv packaging/$(PKGNAME).spec.bak packaging/$(PKGNAME).spec
+
+build_container:
+	echo "--- Build RPM ${PKGNAME}-${VERSION}-${RELEASE}.el$(DIST_VERSION).rpm in container ---"; \
+	case "$(BUILD_CONTAINER)" in \
+		el7) \
+			CONT_FILE="utils/container-builds/Containerfile.centos7"; \
+			;; \
+		el8) \
+			CONT_FILE="utils/container-builds/Containerfile.ubi8"; \
+			;; \
+		"") \
+			echo "BUILD_CONTAINER must be set"; \
+			exit 1; \
+			;; \
+		*) \
+			echo "Available containers are el7, el8"; \
+			exit 1; \
+			;; \
+	esac && \
+	IMAGE="leapp-repo-build-$(BUILD_CONTAINER)"; \
+	$(_CONTAINER_TOOL) image inspect $$IMAGE > /dev/null 2>&1 || \
+	$(_CONTAINER_TOOL) build -f $$CONT_FILE --tag $$IMAGE . && \
+	$(_CONTAINER_TOOL) run --rm --name "$${IMAGE}-cont" -v $$PWD:/repo:Z $$IMAGE
 
 copr_build: srpm
 	@echo "--- Build RPM ${PKGNAME}-${VERSION}-${RELEASE}.el$(DIST_VERSION).rpm in COPR ---"
@@ -288,6 +346,106 @@ test_no_lint:
 
 test: lint test_no_lint
 
+# container images act like a cache so that dependencies can only be downloaded once
+# to force image rebuild, use clean_containers target
+_build_container_image:
+	@[ -z "$$CONT_FILE" ] && { echo "CONT_FILE must be set"; exit 1; } || \
+	[ -z "$$TEST_IMAGE" ] && { echo "TEST_IMAGE must be set"; exit 1; }; \
+	$(_CONTAINER_TOOL) image inspect "$$TEST_IMAGE" > /dev/null 2>&1 && exit 0; \
+	echo "=========== Building container test env image ==========="; \
+	$(_CONTAINER_TOOL) build -f $$CONT_FILE --tag $$TEST_IMAGE .
+
+# tests one IPU, leapp repositories irrelevant to the tested IPU are deleted
+_test_container_ipu:
+	case $$TEST_CONT_IPU in \
+	el7toel8) \
+		export REPOSITORIES="common,el7toel8"; \
+		;; \
+	el8toel9) \
+		export REPOSITORIES="common,el8toel9"; \
+		;; \
+	"") \
+		echo "TEST_CONT_IPU must be set"; exit 1; \
+		;; \
+	*) \
+		echo "Only supported TEST_CONT_IPUs are el7toel8, el8toel9"; exit 1; \
+		;; \
+	esac && \
+	$(_CONTAINER_TOOL) exec -w /repocopy $$_CONT_NAME make clean && \
+	$(_CONTAINER_TOOL) exec -w /repocopy -e REPOSITORIES $$_CONT_NAME make $${_TEST_CONT_TARGET:-test}
+
+# Runs tests in a container
+# Builds testing image first if it doesn't exist
+# On some Python versions, we need to test both IPUs,
+# because e.g. RHEL7 to RHEL8 IPU must work on python2.7 and python3.6
+# and RHEL8 to RHEL9 IPU must work on python3.6 and python3.9.
+test_container:
+	case $(_TEST_CONTAINER) in \
+	f34) \
+		export CONT_FILE="utils/container-tests/Containerfile.f34"; \
+		export _VENV="python3.9"; \
+		;; \
+	rhel7) \
+		export CONT_FILE="utils/container-tests/Containerfile.rhel7"; \
+		export _VENV="python2.7"; \
+		;; \
+	rhel8) \
+		export CONT_FILE="utils/container-tests/Containerfile.rhel8"; \
+		export _VENV="python3.6"; \
+		;; \
+	*) \
+		echo "Error: Available containers are: f34, rhel7, rhel8"; exit 1; \
+		;; \
+	esac; \
+	export TEST_IMAGE="leapp-repo-tests-$(_TEST_CONTAINER)"; \
+	$(MAKE) _build_container_image && \
+	echo "=========== Running tests in $(_TEST_CONTAINER) container ===============" && \
+	export _CONT_NAME="leapp-repo-tests-$(_TEST_CONTAINER)-cont"; \
+	$(_CONTAINER_TOOL) ps -q -f name=$$_CONT_NAME && { $(_CONTAINER_TOOL) kill $$_CONT_NAME; $(_CONTAINER_TOOL) rm $$_CONT_NAME; }; \
+	$(_CONTAINER_TOOL) run -di --name $$_CONT_NAME -v "$$PWD":/repo:Z -e PYTHON_VENV=$$_VENV $$TEST_IMAGE && \
+	$(_CONTAINER_TOOL) exec $$_CONT_NAME rsync -aur --delete --exclude "tut*" /repo/ /repocopy && \
+	case $$_VENV in \
+	python2.7) \
+		TEST_CONT_IPU=el7toel8 $(MAKE) _test_container_ipu; \
+		;;\
+	python3.6) \
+		TEST_CONT_IPU=el7toel8 $(MAKE) _test_container_ipu; \
+		TEST_CONT_IPU=el8toel9 $(MAKE) _test_container_ipu; \
+		;; \
+	python3.9) \
+		TEST_CONT_IPU=el8toel9 $(MAKE) _test_container_ipu; \
+		;; \
+	*) \
+		TEST_CONT_IPU=el8toel9 $(MAKE) _test_container_ipu; \
+		;;\
+	esac; \
+	$(_CONTAINER_TOOL) kill $$_CONT_NAME; \
+	$(_CONTAINER_TOOL) rm $$_CONT_NAME
+
+test_container_all:
+	@for container in "f34" "rhel7" "rhel8"; do \
+		TEST_CONTAINER=$$container $(MAKE) test_container || exit 1; \
+	done
+
+test_container_no_lint:
+	@_TEST_CONT_TARGET="test_no_lint" $(MAKE) test_container
+
+test_container_all_no_lint:
+	@for container in "f34" "rhel7" "rhel8"; do \
+		TEST_CONTAINER=$$container $(MAKE) test_container_no_lint || exit 1; \
+	done
+
+#TODO(mmatuska): Add lint_container and lint_container_all for running just lint in containers
+
+# clean all testing and building containers and their images
+clean_containers:
+	for i in "leapp-repo-tests-f34" "leapp-repo-tests-rhel7" "leapp-repo-tests-rhel8" \
+	"leapp-repo-build-el7" "leapp-repo-build-el8"; do \
+		$(_CONTAINER_TOOL) kill "$$i-cont" || :; \
+		$(_CONTAINER_TOOL) rm "$$i-cont" || :; \
+		$(_CONTAINER_TOOL) rmi "$$i" || :;  \
+	done > /dev/null 2>&1
+
 fast_lint:
 	@. $(VENVNAME)/bin/activate; \
 	FILES_TO_LINT="$$(git diff --name-only $(MASTER_BRANCH)| grep '\.py$$')"; \
@@ -312,4 +470,5 @@ dashboard_data:
 	$(_PYTHON_VENV) ../../../utils/dashboard-json-dump.py > ../../../discover.json; \
 	popd
 
-.PHONY: help build clean prepare source srpm copr_build print_release register install-deps install-deps-fedora lint test_no_lint test dashboard_data
+.PHONY: help build clean prepare source srpm copr_build _build_local build_container print_release register install-deps install-deps-fedora  lint test_no_lint test dashboard_data fast_lint
+.PHONY: test_container test_container_no_lint test_container_all test_container_all_no_lint clean_containers _build_container_image _test_container_ipu

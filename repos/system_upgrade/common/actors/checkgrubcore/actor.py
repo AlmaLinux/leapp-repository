@@ -1,11 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.libraries.common.config import architecture
 from leapp.models import FirmwareFacts, GrubDevice, UpdateGrub
-from leapp.reporting import Report, create_report
-from leapp import reporting
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.utils.deprecation import suppress_deprecation
-
 
 GRUB_SUMMARY = ('On legacy (BIOS) systems, GRUB core (located in the gap between the MBR and the '
                 'first partition) does not get automatically updated when GRUB is upgraded.')
@@ -39,7 +38,7 @@ class CheckGrubCore(Actor):
                     ),
                     reporting.Summary(GRUB_SUMMARY),
                     reporting.Severity(reporting.Severity.HIGH),
-                    reporting.Tags([reporting.Tags.BOOT]),
+                    reporting.Groups([reporting.Groups.BOOT]),
                 ])
             else:
                 create_report([
@@ -49,7 +48,7 @@ class CheckGrubCore(Actor):
                         'update GRUB core as it is not done automatically on legacy (BIOS) systems. '
                     ),
                     reporting.Severity(reporting.Severity.HIGH),
-                    reporting.Tags([reporting.Tags.BOOT]),
+                    reporting.Groups([reporting.Groups.BOOT]),
                     reporting.Remediation(
                         hint='Please run "grub2-install <GRUB_DEVICE> command manually after upgrade'),
                 ])

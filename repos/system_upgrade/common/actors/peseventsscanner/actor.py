@@ -2,7 +2,7 @@ import os
 import os.path
 
 from leapp.actors import Actor
-from leapp.libraries.actor.peseventsscanner import pes_events_scanner
+from leapp.libraries.actor.pes_events_scanner import process
 from leapp.models import (
     EnabledModules,
     InstalledRedHatSignedRPM,

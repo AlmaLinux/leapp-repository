@@ -1,11 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.models import SSSDConfig8to9
-from leapp import reporting
-from leapp.reporting import Report, create_report
-from leapp.tags import IPUWorkflowTag, ChecksPhaseTag
+from leapp.reporting import create_report, Report
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
-
-COMMON_REPORT_TAGS = [reporting.Tags.AUTHENTICATION, reporting.Tags.SECURITY]
+COMMON_REPORT_TAGS = [reporting.Groups.AUTHENTICATION, reporting.Groups.SECURITY]
 
 related = [
     reporting.RelatedResource('package', 'sssd'),
@@ -50,7 +49,7 @@ class SSSDCheck8to9(Actor):
             reporting.Title('SSSD implicit files domain is now disabled by default.'),
             reporting.Summary('Default value of [sssd]/enable_files_domain has '
                               'changed from true to false.'),
-            reporting.Tags(COMMON_REPORT_TAGS),
+            reporting.Groups(COMMON_REPORT_TAGS),
             reporting.Remediation(
                 hint='If you use smartcard authentication for local users, '
                      'set this option to true explicitly and call '

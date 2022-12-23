@@ -4,7 +4,6 @@ from leapp.libraries.stdlib import api
 from leapp.models import RHSMInfo
 from leapp.reporting import create_report
 
-
 SCA_TEXT = "Content Access Mode is set to Simple Content Access"
 
 
@@ -20,8 +19,8 @@ def process():
                         ' executing leapp.'
                     ),
                     reporting.Severity(reporting.Severity.HIGH),
-                    reporting.Tags([reporting.Tags.SANITY]),
-                    reporting.Flags([reporting.Flags.INHIBITOR]),
+                    reporting.Groups([reporting.Groups.SANITY]),
+                    reporting.Groups([reporting.Groups.INHIBITOR]),
                     reporting.Remediation(
                         hint='Register your system with the subscription-manager tool and attach'
                              ' proper SKUs to be able to proceed the upgrade or use the --no-rhsm'

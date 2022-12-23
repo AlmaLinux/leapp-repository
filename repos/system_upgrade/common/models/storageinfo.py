@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemInfoTopic
 
 
@@ -35,9 +35,11 @@ class LsblkEntry(Model):
     topic = SystemInfoTopic
 
     name = fields.String()
+    kname = fields.String()
     maj_min = fields.String()
     rm = fields.String()
     size = fields.String()
+    bsize = fields.Integer()
     ro = fields.String()
     tp = fields.String()
     mountpoint = fields.String()

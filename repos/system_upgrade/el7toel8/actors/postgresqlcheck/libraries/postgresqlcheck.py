@@ -3,7 +3,6 @@ from leapp.libraries.common.rpms import has_package
 from leapp.libraries.stdlib import api
 from leapp.models import InstalledRedHatSignedRPM
 
-
 # Summary for postgresql-server report
 report_server_inst_summary = (
     'PostgreSQL server component will be upgraded. Since RHEL-8 includes'
@@ -45,7 +44,7 @@ def _report_server_installed():
         reporting.Title('PostgreSQL (postgresql-server) has been detected on your system'),
         reporting.Summary(report_server_inst_summary),
         reporting.Severity(reporting.Severity.MEDIUM),
-        reporting.Tags([reporting.Tags.SERVICES]),
+        reporting.Groups([reporting.Groups.SERVICES]),
         reporting.ExternalLink(title='Migrating to a RHEL 8 version of PostgreSQL',
                                url=report_server_inst_link_url),
         reporting.RelatedResource('package', 'postgresql-server'),
@@ -65,7 +64,7 @@ def _report_contrib_installed():
         reporting.Title('PostgreSQL (postgresql-contrib) has been detected on your system'),
         reporting.Summary(report_contrib_inst_summary),
         reporting.Severity(reporting.Severity.MEDIUM),
-        reporting.Tags([reporting.Tags.SERVICES]),
+        reporting.Groups([reporting.Groups.SERVICES]),
         reporting.RelatedResource('package', 'postgresql-contrib')
         ])
 

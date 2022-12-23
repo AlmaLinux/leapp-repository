@@ -1,7 +1,13 @@
 import re
 
 from leapp.libraries.stdlib import api, run
-from leapp.models import DetectedDeviceOrDriver, DeviceDriverDeprecationData, PCIDevice, PCIDevices
+from leapp.models import (
+    ActiveKernelModulesFacts,
+    DetectedDeviceOrDriver,
+    DeviceDriverDeprecationData,
+    PCIDevice,
+    PCIDevices
+)
 
 # Regex to capture Vendor, Device and SVendor and SDevice values
 PCI_ID_REG = re.compile(r"(?<=Vendor:\t|Device:\t)\w+")
@@ -72,13 +78,33 @@ def parse_pci_devices(pci_textual, pci_numeric):
 def produce_detected_devices(devices):
     prefix_re = re.compile('0x')
     entry_lookup = {
-        prefix_re.sub(' ', entry.device_id): entry
+        prefix_re.sub('', entry.device_id): entry
         for message in api.consume(DeviceDriverDeprecationData) for entry in message.entries
     }
     api.produce(*[
         DetectedDeviceOrDriver(**entry_lookup[device.pci_id].dump())
         for device in devices
         if device.pci_id in entry_lookup
+    ])
+
+
+def produce_detected_drivers(devices):
+    active_modules = {
+        module.file_name
+        for message in api.consume(ActiveKernelModulesFacts) for module in message.kernel_modules
+    }
+
+    # Create a lookup by driver_name and filter out the kernel that are active
+    entry_lookup = {
+        entry.driver_name: entry
+        for message in api.consume(DeviceDriverDeprecationData) for entry in message.entries
+        if not entry.device_id and entry.driver_name and entry.driver_name not in active_modules
+    }
+
+    drivers = {device.driver for device in devices if device.driver in entry_lookup}
+    api.produce(*[
+        DetectedDeviceOrDriver(**entry_lookup[driver].dump())
+        for driver in drivers
     ])
 
 
@@ -93,4 +119,5 @@ def scan_pci_devices(producer):
     pci_numeric = run(['lspci', '-vmmkn'], checked=False)['stdout']
     devices = parse_pci_devices(pci_textual, pci_numeric)
     produce_detected_devices(devices)
+    produce_detected_drivers(devices)
     produce_pci_devices(producer, devices)

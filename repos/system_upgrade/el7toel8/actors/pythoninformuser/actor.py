@@ -1,6 +1,6 @@
-from leapp.actors import Actor
-from leapp.reporting import Report, create_report
 from leapp import reporting
+from leapp.actors import Actor
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
@@ -22,7 +22,7 @@ class PythonInformUser(Actor):
             reporting.Title(title),
             reporting.Summary(summary),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.PYTHON]),
+            reporting.Groups([reporting.Groups.PYTHON]),
             reporting.Audience('developer'),
             reporting.ExternalLink(url, title),
             reporting.Remediation(hint='Please run "alternatives --set python /usr/bin/python3" after upgrade'),
