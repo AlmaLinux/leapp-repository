@@ -42,7 +42,7 @@ class ReplaceRpmnewConfigs(Actor):
                 repoconfig = []
                 with open(reponame) as o:
                     for line in o.readlines():
-                        if 'enabled' in line:
+                        if line.startswith('enabled'):
                             line = 'enabled = 0\n'
                         repoconfig.append(line)
                 with open(reponame, 'w') as f:
