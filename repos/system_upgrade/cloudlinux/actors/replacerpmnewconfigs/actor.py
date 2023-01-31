@@ -1,4 +1,5 @@
 import os
+import fileinput
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
@@ -14,8 +15,6 @@ class ReplaceRpmnewConfigs(Actor):
     """
     Replace CloudLinux-related repository config .rpmnew files.
     """
-
-    original = '/etc/sysconfig/rhn/up2date'
 
     name = 'replace_rpmnew_configs'
     consumes = ()
@@ -39,14 +38,12 @@ class ReplaceRpmnewConfigs(Actor):
 
         for reponame in os.listdir(REPO_DIR):
             if LEAPP_SUFFIX in reponame:
-                repoconfig = []
-                with open(reponame) as o:
-                    for line in o.readlines():
-                        if line.startswith('enabled'):
-                            line = 'enabled = 0\n'
-                        repoconfig.append(line)
-                with open(reponame, 'w') as f:
-                    f.writelines(repoconfig)
+                repofile_path = os.path.join(REPO_DIR, reponame)
+                for line in fileinput.input(repofile_path, inplace=True):
+                    if line.startswith('enabled'):
+                        print("enabled = 0\n")
+                    else:
+                        print(line)
 
         if renamed_repofiles:
             replaced_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in renamed_repofiles])
