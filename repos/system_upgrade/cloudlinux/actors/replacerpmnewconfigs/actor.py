@@ -12,7 +12,7 @@ LEAPP_SUFFIX = '.leapp-backup'
 
 class ReplaceRpmnewConfigs(Actor):
     """
-    No documentation has been provided for the replace_rpmnew_configs actor.
+    Replace CloudLinux-related repository config .rpmnew files.
     """
 
     original = '/etc/sysconfig/rhn/up2date'
