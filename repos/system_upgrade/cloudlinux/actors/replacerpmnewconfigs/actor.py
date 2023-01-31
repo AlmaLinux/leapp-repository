@@ -37,6 +37,17 @@ class ReplaceRpmnewConfigs(Actor):
                 os.rename(new_file_path, base_path)
                 renamed_repofiles.append(base_reponame)
 
+        for reponame in os.listdir(REPO_DIR):
+            if LEAPP_SUFFIX in reponame:
+                repoconfig = []
+                with open(reponame) as o:
+                    for line in o.readlines():
+                        if 'enabled' in line:
+                            line = 'enabled = 0\n'
+                        repoconfig.append(line)
+                with open(reponame, 'w') as f:
+                    f.writelines(repoconfig)
+
         if renamed_repofiles:
             replaced_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in renamed_repofiles])
             reporting.create_report([
