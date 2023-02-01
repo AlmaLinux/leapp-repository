@@ -43,9 +43,9 @@ class ReplaceRpmnewConfigs(Actor):
                 repofile_path = os.path.join(REPO_DIR, reponame)
                 for line in fileinput.input(repofile_path, inplace=True):
                     if line.startswith('enabled'):
-                        print("enabled = 0\n")
+                        print("enabled = 0")
                     else:
-                        print(line)
+                        print(line, end='')
 
         if renamed_repofiles:
             replaced_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in renamed_repofiles])
