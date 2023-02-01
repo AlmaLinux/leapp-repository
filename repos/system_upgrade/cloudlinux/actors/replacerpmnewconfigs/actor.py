@@ -1,5 +1,7 @@
+from __future__ import print_function
 import os
 import fileinput
+
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
