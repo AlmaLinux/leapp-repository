@@ -1,4 +1,4 @@
 #!/usr/bin/bash -e
 
 # can't be removed in the main transaction due to errors in %preun
-yum --setopt=tsflags=noscripts remove gettext-devel
+yum -y --setopt=tsflags=noscripts remove gettext-devel
