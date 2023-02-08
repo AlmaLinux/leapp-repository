@@ -27,3 +27,8 @@ class InstalledRedHatSignedRPM(InstalledRPM):
 
 class InstalledUnsignedRPM(InstalledRPM):
     pass
+
+
+class PreRemovedRpmPackages(InstalledRPM):
+    # Do we want to install the package again when upgrading?
+    install = fields.Boolean(default=True)

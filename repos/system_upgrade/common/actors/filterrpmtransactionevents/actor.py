@@ -3,7 +3,8 @@ from leapp.models import (
     FilteredRpmTransactionTasks,
     InstalledRedHatSignedRPM,
     PESRpmTransactionTasks,
-    RpmTransactionTasks
+    RpmTransactionTasks,
+    PreRemovedRpmPackages
 )
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
@@ -18,14 +19,27 @@ class FilterRpmTransactionTasks(Actor):
     """
 
     name = 'check_rpm_transaction_events'
-    consumes = (PESRpmTransactionTasks, RpmTransactionTasks, InstalledRedHatSignedRPM,)
+    consumes = (
+        PESRpmTransactionTasks,
+        RpmTransactionTasks,
+        InstalledRedHatSignedRPM,
+        PreRemovedRpmPackages,
+    )
     produces = (FilteredRpmTransactionTasks,)
     tags = (IPUWorkflowTag, ChecksPhaseTag)
 
     def process(self):
         installed_pkgs = set()
+        preremoved_pkgs = set()
+        preremoved_pkgs_to_install = set()
+
         for rpm_pkgs in self.consume(InstalledRedHatSignedRPM):
             installed_pkgs.update([pkg.name for pkg in rpm_pkgs.items])
+        for rpm_pkgs in self.consume(PreRemovedRpmPackages):
+            preremoved_pkgs.update([pkg.name for pkg in rpm_pkgs.items])
+            preremoved_pkgs_to_install.update([pkg.name for pkg in rpm_pkgs.items if rpm_pkgs.install])
+
+        installed_pkgs.difference_update(preremoved_pkgs)
 
         local_rpms = set()
         to_install = set()
@@ -35,6 +49,8 @@ class FilterRpmTransactionTasks(Actor):
         to_reinstall = set()
         modules_to_enable = {}
         modules_to_reset = {}
+
+        to_install.update(preremoved_pkgs_to_install)
         for event in self.consume(RpmTransactionTasks, PESRpmTransactionTasks):
             local_rpms.update(event.local_rpms)
             to_install.update(event.to_install)
