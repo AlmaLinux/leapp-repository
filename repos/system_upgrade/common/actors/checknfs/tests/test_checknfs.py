@@ -1,8 +1,9 @@
 import pytest
 
-from leapp.snactor.fixture import current_actor_context
-from leapp.models import StorageInfo, SystemdMountEntry, FstabEntry, MountEntry
+from leapp.models import FstabEntry, MountEntry, StorageInfo, SystemdMountEntry
 from leapp.reporting import Report
+from leapp.snactor.fixture import current_actor_context
+from leapp.utils.report import is_inhibitor
 
 
 @pytest.mark.parametrize('nfs_fstype', ('nfs', 'nfs4'))
@@ -13,7 +14,7 @@ def test_actor_with_systemdmount_entry(current_actor_context, nfs_fstype):
     current_actor_context.feed(StorageInfo(systemdmount=with_systemdmount_entry))
     current_actor_context.run()
     report_fields = current_actor_context.consume(Report)[0].report
-    assert 'inhibitor' in report_fields['flags']
+    assert is_inhibitor(report_fields)
 
 
 def test_actor_without_systemdmount_entry(current_actor_context):
@@ -37,7 +38,7 @@ def test_actor_with_fstab_entry(current_actor_context, nfs_fstype):
     current_actor_context.feed(StorageInfo(fstab=with_fstab_entry))
     current_actor_context.run()
     report_fields = current_actor_context.consume(Report)[0].report
-    assert 'inhibitor' in report_fields['flags']
+    assert is_inhibitor(report_fields)
 
 
 def test_actor_without_fstab_entry(current_actor_context):
@@ -50,6 +51,13 @@ def test_actor_without_fstab_entry(current_actor_context):
     assert not current_actor_context.consume(Report)
 
 
+def test_actor_with_nfsd(current_actor_context):
+    with_nfsd = [MountEntry(name="nfsd", mount="/proc/fs/nfsd", tp="nfsd", options="rw,relatime")]
+    current_actor_context.feed(StorageInfo(mount=with_nfsd))
+    current_actor_context.run()
+    assert not current_actor_context.consume(Report)
+
+
 @pytest.mark.parametrize('nfs_fstype', ('nfs', 'nfs4'))
 def test_actor_with_mount_share(current_actor_context, nfs_fstype):
     with_mount_share = [MountEntry(name="nfs", mount="/mnt/data", tp=nfs_fstype,
@@ -57,7 +65,7 @@ def test_actor_with_mount_share(current_actor_context, nfs_fstype):
     current_actor_context.feed(StorageInfo(mount=with_mount_share))
     current_actor_context.run()
     report_fields = current_actor_context.consume(Report)[0].report
-    assert 'inhibitor' in report_fields['flags']
+    assert is_inhibitor(report_fields)
 
 
 def test_actor_without_mount_share(current_actor_context):

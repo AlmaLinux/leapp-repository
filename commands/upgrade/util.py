@@ -25,8 +25,8 @@ def disable_database_sync():
     def disable_db_sync_decorator(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            saved = os.environ.get('LEAPP_DEVEL_DATABASE_SYNC_OFF', None)
             try:
-                saved = os.environ.get('LEAPP_DEVEL_DATABASE_SYNC_OFF', None)
                 os.environ['LEAPP_DEVEL_DATABASE_SYNC_OFF'] = '1'
                 return f(*args, **kwargs)
             finally:
@@ -294,7 +294,6 @@ def log_inhibitors(context_id, logger):
     reports = fetch_upgrade_report_messages(context_id)
     inhibitors = [report for report in reports if Flags.INHIBITOR in report.get('flags', [])]
     if inhibitors:
-        pretty_block_log("UPGRADE INHIBITED", logger.error)
         logger.error('Upgrade has been inhibited due to the following problems:')
         for position, report in enumerate(inhibitors, start=1):
             logger.error('{idx:5}. Inhibitor: {title}'.format(idx=position, title=report['title']))

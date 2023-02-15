@@ -1,6 +1,6 @@
 from leapp import reporting
-from leapp.models import PkgManagerInfo, RHUIInfo
 from leapp.libraries.stdlib import api
+from leapp.models import PkgManagerInfo, RHUIInfo
 
 
 def handle_etc_releasever():
@@ -21,7 +21,7 @@ def handle_etc_releasever():
             )
         ),
         reporting.Severity(reporting.Severity.INFO),
-        reporting.Tags([reporting.Tags.UPGRADE_PROCESS]),
+        reporting.Groups([reporting.Groups.UPGRADE_PROCESS]),
     ])
 
 

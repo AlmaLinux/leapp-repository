@@ -1,8 +1,8 @@
-from leapp.actors import Actor
-from leapp.models import InstalledRedHatSignedRPM
-from leapp.libraries.common.rpms import has_package
-from leapp.reporting import Report, create_report
 from leapp import reporting
+from leapp.actors import Actor
+from leapp.libraries.common.rpms import has_package
+from leapp.models import InstalledRedHatSignedRPM
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
@@ -25,6 +25,6 @@ class CheckAcpid(Actor):
                 reporting.Remediation(
                     hint='You must now use both options (\'-df\') for the same behavior. Please update '
                          'your scripts to be compatible with the changes.'),
-                reporting.Tags([reporting.Tags.KERNEL, reporting.Tags.SERVICES]),
+                reporting.Groups([reporting.Groups.KERNEL, reporting.Groups.SERVICES]),
                 reporting.RelatedResource('package', 'acpid')
             ])

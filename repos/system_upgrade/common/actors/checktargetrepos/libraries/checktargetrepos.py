@@ -1,9 +1,8 @@
-from leapp.models import CustomTargetRepositoryFile, TargetRepositories, RHUIInfo
-from leapp.libraries.stdlib import api
 from leapp import reporting
 from leapp.libraries.common import config, rhsm
 from leapp.libraries.common.config.version import get_target_major_version
-
+from leapp.libraries.stdlib import api
+from leapp.models import CustomTargetRepositoryFile, RHUIInfo, TargetRepositories
 
 # TODO: we need to provide this path in a shared library
 CUSTOM_REPO_PATH = '/etc/leapp/files/leapp_upgrade_repositories.repo'
@@ -78,8 +77,8 @@ def process():
                 .format(CUSTOM_REPO_PATH, summary_ctrf)
             )),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SANITY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.SANITY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.ExternalLink(url=ipu_doc_url, title='UPGRADING TO RHEL {}'.format(target_major_version)),
             reporting.RelatedResource('file', CUSTOM_REPO_PATH),
         ])

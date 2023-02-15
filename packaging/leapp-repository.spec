@@ -2,7 +2,7 @@
 %global repositorydir %{leapp_datadir}/repositories
 %global custom_repositorydir %{leapp_datadir}/custom-repositories
 
-%define leapp_repo_deps  6
+%define leapp_repo_deps  7
 
 %if 0%{?rhel} == 7
     %define leapp_python_sitelib %{python2_sitelib}
@@ -41,7 +41,7 @@ py2_byte_compile "%1" "%2"}
 # RHEL 8+ packages to be consistent with other leapp projects in future.
 
 Name:           leapp-repository
-Version:        0.16.0
+Version:        0.17.0
 Release:        1%{?dist}
 Summary:        Repositories for leapp
 
@@ -96,7 +96,7 @@ Requires:       leapp-repository-dependencies = %{leapp_repo_deps}
 
 # IMPORTANT: this is capability provided by the leapp framework rpm.
 # Check that 'version' instead of the real framework rpm version.
-Requires:       leapp-framework >= 2.2, leapp-framework < 3
+Requires:       leapp-framework >= 3.1, leapp-framework < 4
 
 # Since we provide sub-commands for the leapp utility, we expect the leapp
 # tool to be installed as well.
@@ -109,6 +109,14 @@ Provides:       leapp-repository = %{version}-%{release}
 # Provide "leapp-upgrade" for the user convenience. Users will be pointed
 # to install "leapp-upgrade" in the official docs.
 Provides:       leapp-upgrade = %{version}-%{release}
+
+# Provide leapp-commands so the framework could refer to them when customers
+# do not have installed particular leapp-repositories
+Provides:       leapp-command(answer)
+Provides:       leapp-command(preupgrade)
+Provides:       leapp-command(upgrade)
+Provides:       leapp-command(rerun)
+Provides:       leapp-command(list-runs)
 
 
 %description -n %{lpr_name}
@@ -153,6 +161,13 @@ Requires:   python3-requests
 Requires:   python3-six
 # required by SELinux actors
 Requires:   policycoreutils-python-utils
+# required by systemfacts, and several other actors
+Requires:   procps-ng
+Requires:   kmod
+# since RHEL 8+ dracut does not have to be present on the system all the time
+# and missing dracut could be killing situation for us :)
+Requires:   dracut
+
 %endif
 ##################################################
 # end requirement

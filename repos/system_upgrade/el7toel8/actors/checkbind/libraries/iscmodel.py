@@ -18,7 +18,7 @@ def add_statement(statement, state):
 def find_dnssec_lookaside(statement, state):
     try:
         arg = statement.var(1)
-        if not(arg.type() == arg.TYPE_BARE and arg.value() == 'no'):
+        if not (arg.type() == arg.TYPE_BARE and arg.value() == 'no'):
             # auto or yes statement
             # dnssec-lookaside "." trust-anchor "dlv.isc.org";
             add_statement(statement, state)
@@ -104,7 +104,7 @@ def make_report(facts):
             reporting.Title('BIND configuration issues found'),
             reporting.Summary(summary),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SERVICES, reporting.Tags.NETWORK]),
+            reporting.Groups([reporting.Groups.SERVICES, reporting.Groups.NETWORK]),
         ])
 
     return report

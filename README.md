@@ -90,7 +90,7 @@ Then you may attach only the `leapp-logs.tgz` file.
 ### Where can I seek help?
 We’ll gladly answer your questions and lead you to through any troubles with the actor development.
 
-You can reach the primary Leapp development team at IRC: `#leapp` on freenode.
+You can reach the primary Leapp development team at IRC: `#leapp` on Libera.Chat.
 
 ## Third-party integration
 

@@ -1,10 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.exceptions import StopActorExecutionError
-from leapp.models import Report, PamConfiguration
-from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
+from leapp.models import PamConfiguration, Report
 from leapp.reporting import create_report
-from leapp import reporting
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
 class CheckRemovedPamModules(Actor):
@@ -60,5 +60,5 @@ class CheckRemovedPamModules(Actor):
                          'under /etc/pam.d/.'.format(', '.join(replacements))
                 ),
                 reporting.Severity(reporting.Severity.HIGH),
-                reporting.Flags([reporting.Flags.INHIBITOR]),
+                reporting.Groups([reporting.Groups.INHIBITOR]),
             ] + [reporting.RelatedResource('pam', r) for r in replacements | found_modules])

@@ -1,9 +1,9 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.libraries.actor.scanner import detect_config_error
 from leapp.libraries.common.config import architecture
 from leapp.models import GrubConfigError
-from leapp.reporting import Report, create_report
-from leapp import reporting
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
@@ -23,8 +23,7 @@ class DetectGrubConfigError(Actor):
             # because ZIPL is used there
             return
         config = '/etc/default/grub'
-        error_detected = detect_config_error(config)
-        if error_detected:
+        if detect_config_error(config):
             create_report([
                 reporting.Title('Syntax error detected in grub configuration'),
                 reporting.Summary(
@@ -33,8 +32,10 @@ class DetectGrubConfigError(Actor):
                     'Error is automatically fixed by add_upgrade_boot_entry actor.'
                 ),
                 reporting.Severity(reporting.Severity.LOW),
-                reporting.Tags([reporting.Tags.BOOT]),
+                reporting.Groups([reporting.Groups.BOOT]),
                 reporting.RelatedResource('file', config)
             ])
 
-        self.produce(GrubConfigError(error_detected=error_detected))
+            config_error = GrubConfigError(error_detected=True,
+                                           error_type='GRUB_CMDLINE_LINUX syntax')
+            self.produce(config_error)

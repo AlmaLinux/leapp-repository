@@ -1,9 +1,9 @@
 import os
 
 from leapp.actors import Actor
-from leapp.libraries.actor.addupgradebootentry import add_boot_entry, fix_grub_config_error
-from leapp.models import BootContent, GrubConfigError, FirmwareFacts, TransactionDryRun
 from leapp.exceptions import StopActorExecutionError
+from leapp.libraries.actor.addupgradebootentry import add_boot_entry, fix_grub_config_error
+from leapp.models import BootContent, FirmwareFacts, GrubConfigError, TargetKernelCmdlineArgTasks, TransactionDryRun
 from leapp.tags import InterimPreparationPhaseTag, IPUWorkflowTag
 
 
@@ -16,13 +16,13 @@ class AddUpgradeBootEntry(Actor):
 
     name = 'add_upgrade_boot_entry'
     consumes = (BootContent, GrubConfigError, FirmwareFacts, TransactionDryRun)
-    produces = ()
+    produces = (TargetKernelCmdlineArgTasks,)
     tags = (IPUWorkflowTag, InterimPreparationPhaseTag)
 
     def process(self):
-        grub_config_error_detected = next(self.consume(GrubConfigError), GrubConfigError()).error_detected
-        if grub_config_error_detected:
-            fix_grub_config_error('/etc/default/grub')
+        for grub_config_error in self.consume(GrubConfigError):
+            if grub_config_error.error_detected:
+                fix_grub_config_error('/etc/default/grub', grub_config_error.error_type)
 
         configs = None
         ff = next(self.consume(FirmwareFacts), None)

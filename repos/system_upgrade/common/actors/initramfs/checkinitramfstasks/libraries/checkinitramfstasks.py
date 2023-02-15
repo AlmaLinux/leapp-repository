@@ -1,9 +1,9 @@
-from collections import defaultdict
 import os
+from collections import defaultdict
 
 from leapp import reporting
 from leapp.libraries.stdlib import api
-from leapp.models import UpgradeInitramfsTasks, TargetInitramfsTasks
+from leapp.models import TargetInitramfsTasks, UpgradeInitramfsTasks
 
 DRACUT_MOD_DIR = '/usr/lib/dracut/modules.d/'
 SUMMARY_DRACUT_FMT = (
@@ -55,8 +55,8 @@ def process():
             reporting.Title('Conflicting requirements of dracut modules for the upgrade initramfs'),
             reporting.Summary(SUMMARY_DRACUT_FMT.format(_printable_modules(conflicts))),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SANITY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.SANITY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
         ]
         reporting.create_report(report)
 
@@ -66,7 +66,7 @@ def process():
             reporting.Title('Conflicting requirements of dracut modules for the target initramfs'),
             reporting.Summary(SUMMARY_DRACUT_FMT.format(_printable_modules(conflicts))),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SANITY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.SANITY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
         ]
         reporting.create_report(report)

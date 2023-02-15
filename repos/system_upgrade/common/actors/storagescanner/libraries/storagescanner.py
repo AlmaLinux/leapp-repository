@@ -130,8 +130,8 @@ def _get_fstab_info(fstab_path):
                         reporting.Title('Problems with parsing data in /etc/fstab'),
                         reporting.Summary(summary),
                         reporting.Severity(reporting.Severity.HIGH),
-                        reporting.Tags([reporting.Tags.FILESYSTEM]),
-                        reporting.Flags([reporting.Flags.INHIBITOR]),
+                        reporting.Groups([reporting.Groups.FILESYSTEM]),
+                        reporting.Groups([reporting.Groups.INHIBITOR]),
                         reporting.Remediation(hint=remediation),
                         reporting.RelatedResource('file', '/etc/fstab')
                     ])
@@ -166,13 +166,22 @@ def _get_mount_info(path):
 @aslist
 def _get_lsblk_info():
     """ Collect storage info from lsblk command """
-    for entry in _get_cmd_output(['lsblk', '-r', '--noheadings'], ' ', 7):
-        name, maj_min, rm, size, ro, tp, mountpoint = entry
+    cmd = ['lsblk', '-pbnr', '--output', 'NAME,MAJ:MIN,RM,SIZE,RO,TYPE,MOUNTPOINT']
+    for entry in _get_cmd_output(cmd, ' ', 7):
+        dev_path, maj_min, rm, bsize, ro, tp, mountpoint = entry
+        lsblk_cmd = ['lsblk', '-nr', '--output', 'NAME,KNAME,SIZE', dev_path]
+        lsblk_info_for_devpath = next(_get_cmd_output(lsblk_cmd, ' ', 3), None)
+        if not lsblk_info_for_devpath:
+            return
+
+        name, kname, size = lsblk_info_for_devpath
         yield LsblkEntry(
             name=name,
+            kname=kname,
             maj_min=maj_min,
             rm=rm,
             size=size,
+            bsize=int(bsize),
             ro=ro,
             tp=tp,
             mountpoint=mountpoint)

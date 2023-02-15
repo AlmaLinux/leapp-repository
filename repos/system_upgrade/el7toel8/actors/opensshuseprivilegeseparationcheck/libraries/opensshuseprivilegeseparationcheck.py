@@ -1,6 +1,6 @@
+from leapp import reporting
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.stdlib import api
-from leapp import reporting
 
 
 def process(openssh_messages):
@@ -22,10 +22,10 @@ def process(openssh_messages):
                 'and is no longer supported in RHEL 8'
             ),
             reporting.Severity(reporting.Severity.LOW),
-            reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.NETWORK,
-                    reporting.Tags.SERVICES
+            reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.NETWORK,
+                    reporting.Groups.SERVICES
             ]),
         ])
