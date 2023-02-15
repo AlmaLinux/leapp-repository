@@ -7,7 +7,7 @@ from leapp.libraries.common.cllaunch import run_on_cloudlinux
 # If the list changes, it has to change in both places.
 # This is a limitation of the current DNFWorkaround implementation.
 # TODO: unify the list in one place. A separate common file, perhaps?
-PACKAGE_LIST = ['gettext-devel']
+PACKAGE_LIST = ['gettext-devel', 'cloudlinux-fchange']
 
 
 class RegisterPackageWorkarounds(Actor):
