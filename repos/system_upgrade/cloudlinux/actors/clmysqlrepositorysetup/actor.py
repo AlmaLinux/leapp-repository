@@ -2,7 +2,8 @@ from leapp.actors import Actor
 from leapp.libraries.actor import clmysqlrepositorysetup
 from leapp.models import (
     CustomTargetRepository,
-    CustomTargetRepositoryFile
+    CustomTargetRepositoryFile,
+    Report
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
@@ -10,7 +11,9 @@ from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 class ClMysqlRepositorySetup(Actor):
     """
-    No documentation has been provided for the cl_mysql_repository_setup actor.
+    Gather data on what MySQL/MariaDB variant is installed on the system, if any.
+    Then prepare the custom repository data and the corresponding file
+    to be sent to the target environment creator.
     """
 
     name = 'cl_mysql_repository_setup'
