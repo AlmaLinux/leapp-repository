@@ -1,4 +1,5 @@
 from leapp.actors import Actor
+from leapp.reporting import Report
 from leapp.libraries.actor import clmysqlrepositorysetup
 from leapp.models import (
     CustomTargetRepository,

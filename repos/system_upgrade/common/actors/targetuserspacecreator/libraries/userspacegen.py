@@ -398,6 +398,11 @@ def _inhibit_on_duplicate_repos(repofiles):
 
 def _get_all_available_repoids(context):
     repofiles = repofileutils.get_parsed_repofiles(context)
+
+    api.current_logger().debug("All available repositories inside the overlay FS:")
+    for repof in repofiles:
+        api.current_logger().debug("File: {}, repos: {}".format(repof.file, [repod.repoid for repod in repof.data]))
+
     # TODO: this is not good solution, but keep it as it is now
     # Issue: #486
     if rhsm.skip_rhsm():
