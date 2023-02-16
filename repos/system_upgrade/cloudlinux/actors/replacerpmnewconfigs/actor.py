@@ -10,7 +10,7 @@ from leapp.libraries.common.cllaunch import run_on_cloudlinux
 REPO_DIR = '/etc/yum.repos.d'
 CL_MARKERS = ['cloudlinux', 'imunify']
 RPMNEW = '.rpmnew'
-LEAPP_SUFFIX = '.leapp-backup'
+LEAPP_BACKUP_SUFFIX = '.leapp-backup'
 
 
 class ReplaceRpmnewConfigs(Actor):
@@ -32,14 +32,14 @@ class ReplaceRpmnewConfigs(Actor):
                 base_reponame = reponame[:-7]
                 base_path = os.path.join(REPO_DIR, base_reponame)
                 new_file_path = os.path.join(REPO_DIR, reponame)
-                backup_path = os.path.join(REPO_DIR, base_reponame + LEAPP_SUFFIX)
+                backup_path = os.path.join(REPO_DIR, base_reponame + LEAPP_BACKUP_SUFFIX)
 
                 os.rename(base_path, backup_path)
                 os.rename(new_file_path, base_path)
                 renamed_repofiles.append(base_reponame)
 
         for reponame in os.listdir(REPO_DIR):
-            if LEAPP_SUFFIX in reponame:
+            if LEAPP_BACKUP_SUFFIX in reponame:
                 repofile_path = os.path.join(REPO_DIR, reponame)
                 for line in fileinput.input(repofile_path, inplace=True):
                     if line.startswith('enabled'):
