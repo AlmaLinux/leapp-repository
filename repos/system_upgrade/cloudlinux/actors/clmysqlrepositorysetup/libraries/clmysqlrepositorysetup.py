@@ -10,7 +10,7 @@ from leapp import reporting
 
 REPO_DIR = '/etc/yum.repos.d'
 REPOFILE_SUFFIX = ".repo"
-LEAPP_COPY_SUFFIX = "_leapp.repo"
+LEAPP_COPY_SUFFIX = "_leapp_custom.repo"
 CL_MARKERS = ['cl-mysql', 'cl-mariadb', 'cl-percona']
 MARIA_MARKERS = ['MariaDB']
 MYSQL_MARKERS = ['mysql-community']
