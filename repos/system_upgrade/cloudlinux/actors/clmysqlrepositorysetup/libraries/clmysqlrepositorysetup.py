@@ -79,6 +79,7 @@ def process():
                 # baseurl = https://archive.mariadb.org/mariadb-10.3/yum/centos/7/x86_64
                 # baseurl = https://archive.mariadb.org/mariadb-10.7/yum/centos7-ppc64/
                 # We want to replace the 7 in OS name after /yum/
+                repo.repoid = repo.repoid + '-8'
                 if repo.enabled:
                     url_parts = repo.baseurl.split('yum')
                     url_parts[1] = 'yum' + url_parts[1].replace('7', '8')
@@ -127,6 +128,7 @@ def process():
                             )
                         ])
                     else:
+                        repo.repoid = repo.repoid + '-8'
                         repo.baseurl = repo.baseurl.replace('/el/7/', '/el/8/')
                         api.current_logger().debug('Generating custom MySQL repo: {}'.format(repo.repoid))
                         api.produce(CustomTargetRepository(
