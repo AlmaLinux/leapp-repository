@@ -174,19 +174,27 @@ def warn_if_unsupported(configuration):
 
 
 def ask_to_continue():
-    with pretty_block(text="Upgrade workflow initiated", end_text="Continue?", target=sys.stdout, color=Color.bold):
-        print("Past this point, Leapp will begin making changes to your system.")
-        print("An improperly or incompletely configured upgrade may break the system, ")
-        print("up to and including making it *completely inaccessible*.")
-        print("Even if you've followed all the preparation steps correctly, ")
-        print("the chance of the upgrade going wrong remains non-zero.")
-        print("Make sure you've checked the logs and reports, and have a backup prepared.")
+    with pretty_block(
+        text="Upgrade workflow initiated",
+        end_text="Continue?",
+        target=sys.stdout,
+        color=Color.bold,
+    ):
+        warn_msg = (
+            "Past this point, Leapp will begin making changes to your system.\n"
+            "An improperly or incompletely configured upgrade may break the system, "
+            "up to and including making it *completely inaccessible*.\n"
+            "Even if you've followed all the preparation steps correctly, "
+            "the chance of the upgrade going wrong remains non-zero.\n"
+            "Make sure you've checked the logs and reports, and have a backup prepared."
+        )
+        print(warn_msg)
 
     response = ""
     while response not in ["y", "n"]:
         response = six.moves.input("Y/N> ").lower()
 
-    return (response == "y")
+    return response == "y"
 
 
 def handle_output_level(args):
