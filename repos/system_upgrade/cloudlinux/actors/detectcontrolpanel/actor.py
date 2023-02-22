@@ -4,7 +4,7 @@ from leapp.reporting import Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
-from leapp.libraries.actor.detectcontrolpanel import (
+from leapp.libraries.common.detectcontrolpanel import (
     detect_panel,
     UNKNOWN_NAME,
     INTEGRATED_NAME,
