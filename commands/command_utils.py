@@ -73,6 +73,17 @@ def get_os_release_version_id(filepath):
         return data.get('VERSION_ID', '').strip('"')
 
 
+def get_os_release_id(filepath):
+    """
+    Retrieve data about System OS ID from provided file.
+
+    :return: `str` version_id
+    """
+    with open(filepath) as f:
+        data = dict(l.strip().split('=', 1) for l in f.readlines() if '=' in l)
+        return data.get('ID', '').strip('"')
+
+
 def get_upgrade_paths_config():
     # NOTE(ivasilev) Importing here not to have circular dependencies
     from leapp.cli.commands.upgrade import util  # noqa: C415; pylint: disable=import-outside-toplevel

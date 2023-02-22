@@ -174,6 +174,20 @@ def warn_if_unsupported(configuration):
 
 
 def ask_to_continue():
+    """
+    Pause before starting the upgrade, warn the user about potential conseqences
+    and ask for confirmation.
+    Only done on whitelisted OS.
+
+    :return: True if it's OK to continue, False if the upgrade should be interrupted.
+    """
+
+    ask_on_os = ['cloudlinux']
+    os_id = command_utils.get_os_release_id()
+
+    if os_id not in ask_on_os:
+        return True
+
     with pretty_block(
         text="Upgrade workflow initiated",
         end_text="Continue?",
