@@ -4,7 +4,10 @@ from leapp.libraries.actor import clmysqlrepositorysetup
 from leapp.models import (
     CustomTargetRepository,
     CustomTargetRepositoryFile,
-    Report
+    InstalledMySqlType,
+    RpmTransactionTasks,
+    InstalledRPM,
+    Report,
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
@@ -17,9 +20,15 @@ class ClMysqlRepositorySetup(Actor):
     to be sent to the target environment creator.
     """
 
-    name = 'cl_mysql_repository_setup'
-    consumes = ()
-    produces = (CustomTargetRepository, CustomTargetRepositoryFile, Report)
+    name = "cl_mysql_repository_setup"
+    consumes = (InstalledRPM)
+    produces = (
+        CustomTargetRepository,
+        CustomTargetRepositoryFile,
+        InstalledMySqlType,
+        RpmTransactionTasks,
+        Report,
+    )
     tags = (FactsPhaseTag, IPUWorkflowTag)
 
     @run_on_cloudlinux

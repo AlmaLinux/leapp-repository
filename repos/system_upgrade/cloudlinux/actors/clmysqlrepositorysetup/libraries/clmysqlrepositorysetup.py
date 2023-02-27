@@ -1,12 +1,17 @@
 import os
 
 from leapp.models import (
+    InstalledMySqlType,
     CustomTargetRepositoryFile,
-    CustomTargetRepository
+    CustomTargetRepository,
+    RpmTransactionTasks,
+    InstalledRPM,
+    Module
 )
 from leapp.libraries.stdlib import api
 from leapp.libraries.common import repofileutils
 from leapp import reporting
+from leapp.libraries.common.clmysql import get_clmysql_type, get_pkg_prefix, MODULE_STREAMS
 
 REPO_DIR = '/etc/yum.repos.d'
 REPOFILE_SUFFIX = ".repo"
@@ -27,11 +32,34 @@ def produce_leapp_repofile_copy(repofile_data, repo_name):
     leapp_repo_path = os.path.join(REPO_DIR, leapp_repofile)
     if os.path.exists(leapp_repo_path):
         os.unlink(leapp_repo_path)
+
+    api.current_logger().debug('Producing a Leapp repofile copy: {}'.format(leapp_repo_path))
     repofileutils.save_repofile(repofile_data, leapp_repo_path)
     api.produce(CustomTargetRepositoryFile(file=leapp_repo_path))
 
 
+def build_install_list(prefix):
+    """
+    Find the installed cl-mysql packages that match the active
+    cl-mysql type as per Governor config.
+
+    :param prefix: Package name prefix to search for.
+    :return: List of matching packages.
+    """
+    to_upgrade = []
+    if prefix:
+        for rpm_pkgs in api.consume(InstalledRPM):
+            for pkg in rpm_pkgs.items:
+                if (pkg.name.startswith(prefix)):
+                    to_upgrade.append(pkg.name)
+        api.current_logger().debug('cl-mysql packages to upgrade: {}'.format(to_upgrade))
+    return to_upgrade
+
+
 def process():
+    mysql_type = 'cloudlinux'
+    clmysql_type = None
+
     for repofile_full in os.listdir(REPO_DIR):
         # Don't touch non-repository files or copied repofiles created by Leapp.
         if repofile_full.endswith(LEAPP_COPY_SUFFIX) or not repofile_full.endswith(REPOFILE_SUFFIX):
@@ -50,6 +78,8 @@ def process():
 
             # Were any repositories enabled?
             for repo in repofile_data.data:
+                # cl-mysql URLs look like this:
+                # baseurl=http://repo.cloudlinux.com/other/cl$releasever/mysqlmeta/cl-mariadb-10.3/$basearch/
                 # We don't want any duplicate repoid entries.
                 repo.repoid = repo.repoid + '-8'
                 # releasever may be something like 8.6, while only 8 is acceptable.
@@ -59,6 +89,8 @@ def process():
                 # from it won't update otherwise.
 
                 if repo.enabled or repo.repoid == 'mysqclient-8':
+                    mysql_type = 'cloudlinux'
+                    clmysql_type = get_clmysql_type()
                     api.current_logger().debug('Generating custom cl-mysql repo: {}'.format(repo.repoid))
                     api.produce(CustomTargetRepository(
                         repoid=repo.repoid,
@@ -81,6 +113,7 @@ def process():
                 # We want to replace the 7 in OS name after /yum/
                 repo.repoid = repo.repoid + '-8'
                 if repo.enabled:
+                    mysql_type = 'mariadb'
                     url_parts = repo.baseurl.split('yum')
                     url_parts[1] = 'yum' + url_parts[1].replace('7', '8')
                     repo.baseurl = ''.join(url_parts)
@@ -104,6 +137,7 @@ def process():
 
             for repo in repofile_data.data:
                 if repo.enabled:
+                    mysql_type = 'mysql'
                     # MySQL package repos don't have these versions available for EL8 anymore.
                     # There'll be nothing to upgrade to.
                     # CL repositories do provide them, though.
@@ -128,6 +162,8 @@ def process():
                             )
                         ])
                     else:
+                        # URLs look like this:
+                        # baseurl = https://repo.mysql.com/yum/mysql-8.0-community/el/7/x86_64/
                         repo.repoid = repo.repoid + '-8'
                         repo.baseurl = repo.baseurl.replace('/el/7/', '/el/8/')
                         api.current_logger().debug('Generating custom MySQL repo: {}'.format(repo.repoid))
@@ -140,3 +176,22 @@ def process():
 
             if any(repo.enabled for repo in repofile_data.data):
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
+
+    api.current_logger().debug('Detected MySQL type: {}, version: {}'.format(mysql_type, clmysql_type))
+
+    if mysql_type == 'cloudlinux' and clmysql_type in MODULE_STREAMS.keys():
+        mod_name, mod_stream = MODULE_STREAMS[clmysql_type].split(':')
+        modules_to_enable = [Module(name=mod_name, stream=mod_stream)]
+        pkg_prefix = get_pkg_prefix(clmysql_type)
+
+        api.current_logger().debug('Enabling DNF module: {}:{}'.format(mod_name, mod_stream))
+        api.produce(RpmTransactionTasks(
+                to_upgrade=build_install_list(pkg_prefix),
+                modules_to_enable=modules_to_enable
+            )
+        )
+
+    api.produce(InstalledMySqlType(
+        type=mysql_type,
+        module=clmysql_type,
+    ))
