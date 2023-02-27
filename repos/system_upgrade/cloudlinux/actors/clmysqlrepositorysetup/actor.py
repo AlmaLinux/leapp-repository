@@ -7,7 +7,6 @@ from leapp.models import (
     InstalledMySqlType,
     RpmTransactionTasks,
     InstalledRPM,
-    Report,
 )
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
