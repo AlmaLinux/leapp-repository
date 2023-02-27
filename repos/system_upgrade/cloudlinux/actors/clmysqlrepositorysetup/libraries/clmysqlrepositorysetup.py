@@ -14,6 +14,7 @@ from leapp import reporting
 from leapp.libraries.common.clmysql import get_clmysql_type, get_pkg_prefix, MODULE_STREAMS
 
 REPO_DIR = '/etc/yum.repos.d'
+TEMP_DIR = '/var/lib/leapp/yum_custom_repofiles'
 REPOFILE_SUFFIX = ".repo"
 LEAPP_COPY_SUFFIX = "_leapp_custom.repo"
 CL_MARKERS = ['cl-mysql', 'cl-mariadb', 'cl-percona']
@@ -28,8 +29,10 @@ def produce_leapp_repofile_copy(repofile_data, repo_name):
     to be used during the Leapp transaction.
     It will be placed inside the isolated overlay environment Leapp runs the upgrade from.
     """
+    if not os.path.isdir(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
     leapp_repofile = repo_name + LEAPP_COPY_SUFFIX
-    leapp_repo_path = os.path.join(REPO_DIR, leapp_repofile)
+    leapp_repo_path = os.path.join(TEMP_DIR, leapp_repofile)
     if os.path.exists(leapp_repo_path):
         os.unlink(leapp_repo_path)
 
