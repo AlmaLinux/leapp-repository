@@ -9,4 +9,4 @@ class InstalledMySqlType(Model):
 
     topic = SystemInfoTopic
     type = fields.String()
-    module = fields.Nullable(fields.String(default=None))  # used for cl-mysql
+    version = fields.Nullable(fields.String(default=None))  # used for cl-mysql

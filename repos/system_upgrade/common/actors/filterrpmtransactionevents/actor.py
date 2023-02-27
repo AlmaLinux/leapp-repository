@@ -65,7 +65,7 @@ class FilterRpmTransactionTasks(Actor):
         # run upgrade for the rest of RH signed pkgs which we do not have rule for
         to_upgrade = installed_pkgs - (to_install | to_remove | to_reinstall)
 
-        self.log.debug('DNF modules to enable: {}'.format(modules_to_enable))
+        self.log.debug('DNF modules to enable: {}'.format(modules_to_enable.keys()))
 
         self.produce(FilteredRpmTransactionTasks(
             local_rpms=list(local_rpms),

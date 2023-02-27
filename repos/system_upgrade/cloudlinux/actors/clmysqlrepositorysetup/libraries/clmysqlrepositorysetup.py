@@ -193,5 +193,5 @@ def process():
 
     api.produce(InstalledMySqlType(
         type=mysql_type,
-        module=clmysql_type,
+        version=clmysql_type,
     ))
