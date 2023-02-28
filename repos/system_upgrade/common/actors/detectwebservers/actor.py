@@ -3,7 +3,6 @@ from leapp import reporting
 from leapp.reporting import Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
-from leapp.libraries.common.cllaunch import run_on_cloudlinux
 from leapp.libraries.actor.detectwebservers import (
     detect_litespeed,
     detect_nginx
@@ -20,7 +19,6 @@ class DetectWebServers(Actor):
     produces = (Report)
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
-    @run_on_cloudlinux
     def process(self):
         litespeed_installed = detect_litespeed()
         nginx_installed = detect_nginx()
@@ -46,6 +44,5 @@ class DetectWebServers(Actor):
                         reporting.Tags.OS_FACTS,
                         reporting.Tags.SERVICES
                     ]),
-                    # reporting.Flags([reporting.Flags.INHIBITOR]),
                 ]
             )
