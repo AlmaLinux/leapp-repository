@@ -29,9 +29,9 @@ class DetectControlPanel(Actor):
         if panel is None:
             raise StopActorExecutionError(message=("Missing information about the installed web panel."))
 
-        if panel == CPANEL_NAME:
+        if panel.name == CPANEL_NAME:
             self.log.debug('cPanel detected, upgrade proceeding')
-        elif panel == INTEGRATED_NAME or panel == UNKNOWN_NAME:
+        elif panel.name == INTEGRATED_NAME or panel.name == UNKNOWN_NAME:
             self.log.debug('Integrated/no panel detected, upgrade proceeding')
         elif panel:
             # Block the upgrade on any systems with a non-supported panel detected.
@@ -44,7 +44,7 @@ class DetectControlPanel(Actor):
                         "Systems with a control panel present are not supported at the moment."
                         " No control panels are currently included in the Leapp database, which"
                         " makes loss of functionality after the upgrade extremely likely."
-                        " Detected panel: {}.".format(panel)
+                        " Detected panel: {}.".format(panel.name)
                     ),
                     reporting.Severity(reporting.Severity.HIGH),
                     reporting.Tags([reporting.Tags.OS_FACTS]),
