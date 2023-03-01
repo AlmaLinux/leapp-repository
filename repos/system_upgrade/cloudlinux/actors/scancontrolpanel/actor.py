@@ -22,6 +22,6 @@ class ScanControlPanel(Actor):
 
         self.produce(
             InstalledControlPanel(
-                panel=detected_panel
+                name=detected_panel
             )
         )

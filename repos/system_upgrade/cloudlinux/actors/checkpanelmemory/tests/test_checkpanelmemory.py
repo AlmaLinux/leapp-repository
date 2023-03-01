@@ -15,7 +15,7 @@ def test_check_memory_low(monkeypatch):
     minimum_req_error = []
     monkeypatch.setattr(api, "current_actor", CurrentActorMocked())
     minimum_req_error = checkmemory._check_memory(
-        InstalledControlPanel(panel=INTEGRATED_NAME), MemoryInfo(mem_total=1024)
+        InstalledControlPanel(name=INTEGRATED_NAME), MemoryInfo(mem_total=1024)
     )
     assert minimum_req_error
 
@@ -24,7 +24,7 @@ def test_check_memory_high(monkeypatch):
     minimum_req_error = []
     monkeypatch.setattr(api, "current_actor", CurrentActorMocked())
     minimum_req_error = checkmemory._check_memory(
-        InstalledControlPanel(panel=CPANEL_NAME), MemoryInfo(mem_total=16273492)
+        InstalledControlPanel(name=CPANEL_NAME), MemoryInfo(mem_total=16273492)
     )
     assert not minimum_req_error
 

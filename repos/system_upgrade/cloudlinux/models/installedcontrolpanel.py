@@ -9,4 +9,4 @@ class InstalledControlPanel(Model):
     """
 
     topic = SystemInfoTopic
-    panel = fields.String()
+    name = fields.String()
