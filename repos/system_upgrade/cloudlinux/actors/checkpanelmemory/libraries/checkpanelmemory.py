@@ -27,19 +27,17 @@ def _check_memory(panel, mem_info):
 
 
 def process():
-    panel_name = next(api.consume(InstalledControlPanel), None)
+    panel = next(api.consume(InstalledControlPanel), None)
     memoryinfo = next(api.consume(MemoryInfo), None)
-    if panel_name is None:
+    if panel is None:
         raise StopActorExecutionError(message=("Missing information about the installed web panel."))
     if memoryinfo is None:
         raise StopActorExecutionError(message=("Missing information about system memory."))
 
-    minimum_req_error = _check_memory(memoryinfo)
+    minimum_req_error = _check_memory(panel.name, memoryinfo)
 
     if minimum_req_error:
-        title = "Minimum memory requirements for panel {} are not met".format(
-            panel_name
-        )
+        title = "Minimum memory requirements for panel {} are not met".format(panel.name)
         summary = (
             "Insufficient memory may result in an instability of the upgrade process."
             " This can cause an interruption of the process,"
