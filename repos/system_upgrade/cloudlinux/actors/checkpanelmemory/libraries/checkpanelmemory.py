@@ -12,7 +12,7 @@ from leapp.libraries.common.detectcontrolpanel import (
 required_memory = {
     UNKNOWN_NAME: 1536 * 1024,  # 1.5 Gb
     INTEGRATED_NAME: 1536 * 1024,  # 1.5 Gb
-    CPANEL_NAME: 4096 * 1024,  # 4 Gb
+    CPANEL_NAME: 2048 * 1024,  # 2 Gb
 }
 
 
