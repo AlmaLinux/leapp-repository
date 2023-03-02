@@ -4,7 +4,7 @@ from leapp.libraries.actor import clmysqlrepositorysetup
 from leapp.models import (
     CustomTargetRepository,
     CustomTargetRepositoryFile,
-    InstalledMySqlType,
+    InstalledMySqlTypes,
     RpmTransactionTasks,
     InstalledRPM,
 )
@@ -20,11 +20,11 @@ class ClMysqlRepositorySetup(Actor):
     """
 
     name = "cl_mysql_repository_setup"
-    consumes = (InstalledRPM)
+    consumes = (InstalledRPM,)
     produces = (
         CustomTargetRepository,
         CustomTargetRepositoryFile,
-        InstalledMySqlType,
+        InstalledMySqlTypes,
         RpmTransactionTasks,
         Report,
     )

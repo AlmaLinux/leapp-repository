@@ -1,7 +1,7 @@
 import os
 
 from leapp.models import (
-    InstalledMySqlType,
+    InstalledMySqlTypes,
     CustomTargetRepositoryFile,
     CustomTargetRepository,
     RpmTransactionTasks,
@@ -60,7 +60,7 @@ def build_install_list(prefix):
 
 
 def process():
-    mysql_type = 'cloudlinux'
+    mysql_types = []
     clmysql_type = None
 
     for repofile_full in os.listdir(REPO_DIR):
@@ -92,7 +92,7 @@ def process():
                 # from it won't update otherwise.
 
                 if repo.enabled or repo.repoid == 'mysqclient-8':
-                    mysql_type = 'cloudlinux'
+                    mysql_types.append('cloudlinux')
                     clmysql_type = get_clmysql_type()
                     api.current_logger().debug('Generating custom cl-mysql repo: {}'.format(repo.repoid))
                     api.produce(CustomTargetRepository(
@@ -116,7 +116,7 @@ def process():
                 # We want to replace the 7 in OS name after /yum/
                 repo.repoid = repo.repoid + '-8'
                 if repo.enabled:
-                    mysql_type = 'mariadb'
+                    mysql_types.append('mariadb')
                     url_parts = repo.baseurl.split('yum')
                     url_parts[1] = 'yum' + url_parts[1].replace('7', '8')
                     repo.baseurl = ''.join(url_parts)
@@ -140,7 +140,7 @@ def process():
 
             for repo in repofile_data.data:
                 if repo.enabled:
-                    mysql_type = 'mysql'
+                    mysql_types.append('mysql')
                     # MySQL package repos don't have these versions available for EL8 anymore.
                     # There'll be nothing to upgrade to.
                     # CL repositories do provide them, though.
@@ -180,9 +180,25 @@ def process():
             if any(repo.enabled for repo in repofile_data.data):
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
 
-    api.current_logger().debug('Detected MySQL type: {}, version: {}'.format(mysql_type, clmysql_type))
+    if len(mysql_types) == 1:
+        api.current_logger().debug('Detected MySQL type: {}, version: {}'.format(mysql_types[0], clmysql_type))
+    else:
+        api.current_logger().warning('Detected multiple MySQL types: {}'.format(", ".join(mysql_types)))
+        reporting.create_report([
+            reporting.Title('Multpile MySQL/MariaDB versions detected'),
+            reporting.Summary(
+                'Package repositories for multiple distributions of MySQL/MariaDB '
+                'were detected on the system. '
+                'Leapp will attempt to update all distributions detected. '
+                'To update only the distribution you use, disable YUM package repositories for all '
+                'other distributions. '
+                'Detected: {0}'.format(", ".join(mysql_types))
+            ),
+            reporting.Severity(reporting.Severity.MEDIUM),
+            reporting.Tags([reporting.Tags.REPOSITORY, reporting.Tags.OS_FACTS]),
+        ])
 
-    if mysql_type == 'cloudlinux' and clmysql_type in MODULE_STREAMS.keys():
+    if 'cloudlinux' in mysql_types and clmysql_type in MODULE_STREAMS.keys():
         mod_name, mod_stream = MODULE_STREAMS[clmysql_type].split(':')
         modules_to_enable = [Module(name=mod_name, stream=mod_stream)]
         pkg_prefix = get_pkg_prefix(clmysql_type)
@@ -194,7 +210,7 @@ def process():
             )
         )
 
-    api.produce(InstalledMySqlType(
-        type=mysql_type,
+    api.produce(InstalledMySqlTypes(
+        types=mysql_types,
         version=clmysql_type,
     ))
