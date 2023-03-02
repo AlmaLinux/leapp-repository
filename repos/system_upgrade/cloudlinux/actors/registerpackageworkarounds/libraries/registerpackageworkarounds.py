@@ -6,11 +6,13 @@ from leapp.libraries.stdlib import api
 # If the list changes, it has to change in both places.
 # This is a limitation of the current DNFWorkaround implementation.
 # TODO: unify the list in one place. A separate common file, perhaps?
-TO_REINSTALL = ['gettext-devel']
-TO_DELETE = ['cloudlinux-fchange']
+TO_REINSTALL = ['gettext-devel']  # These packages will be marked for installation
+TO_DELETE = []  # These won't be
 
 
 def produce_workaround_msg(pkg_list, reinstall):
+    if not pkg_list:
+        return
     preremoved_pkgs = PreRemovedRpmPackages(install=reinstall)
     # Only produce a message if a package is actually about to be uninstalled
     for rpm_pkgs in api.consume(InstalledRPM):
