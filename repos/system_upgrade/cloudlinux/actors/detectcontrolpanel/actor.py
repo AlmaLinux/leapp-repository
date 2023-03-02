@@ -19,7 +19,7 @@ class DetectControlPanel(Actor):
     """
 
     name = "detect_control_panel"
-    consumes = (InstalledControlPanel)
+    consumes = (InstalledControlPanel,)
     produces = (Report,)
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
