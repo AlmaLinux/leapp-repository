@@ -181,7 +181,7 @@ def process():
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
 
     if len(mysql_types) == 0:
-        api.current_logger().debug('No installed MySQL/MariaDB detected'))
+        api.current_logger().debug('No installed MySQL/MariaDB detected')
     elif len(mysql_types) == 1:
         api.current_logger().debug('Detected MySQL/MariaDB type: {}, version: {}'.format(mysql_types[0], clmysql_type))
     else:
