@@ -180,8 +180,10 @@ def process():
             if any(repo.enabled for repo in repofile_data.data):
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
 
-    if len(mysql_types) == 1:
-        api.current_logger().debug('Detected MySQL type: {}, version: {}'.format(mysql_types[0], clmysql_type))
+    if len(mysql_types) == 0:
+        api.current_logger().debug('No installed MySQL/MariaDB detected'))
+    elif len(mysql_types) == 1:
+        api.current_logger().debug('Detected MySQL/MariaDB type: {}, version: {}'.format(mysql_types[0], clmysql_type))
     else:
         api.current_logger().warning('Detected multiple MySQL types: {}'.format(", ".join(mysql_types)))
         reporting.create_report([
