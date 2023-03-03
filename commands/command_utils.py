@@ -68,9 +68,36 @@ def get_os_release_version_id(filepath):
 
     :return: `str` version_id
     """
-    with open(filepath) as f:
-        data = dict(l.strip().split('=', 1) for l in f.readlines() if '=' in l)
-        return data.get('VERSION_ID', '').strip('"')
+    try:
+        with open(filepath) as f:
+            data = dict(l.strip().split('=', 1) for l in f.readlines() if '=' in l)
+            return data.get('VERSION_ID', '').strip('"')
+    except OSError as e:
+        raise CommandError(
+                "Unable to read system OS release from file {}, "
+                "error: {}".format(
+                    filepath,
+                    e.strerror
+                ))
+
+
+def get_os_release_id(filepath):
+    """
+    Retrieve data about System OS ID from provided file.
+
+    :return: `str` version_id
+    """
+    try:
+        with open(filepath) as f:
+            data = dict(l.strip().split('=', 1) for l in f.readlines() if '=' in l)
+            return data.get('ID', '').strip('"')
+    except OSError as e:
+        raise CommandError(
+                "Unable to read system OS ID from file {}, "
+                "error: {}".format(
+                    filepath,
+                    e.strerror
+                ))
 
 
 def get_upgrade_paths_config():

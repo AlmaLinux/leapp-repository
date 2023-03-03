@@ -26,6 +26,18 @@ def _parse_repository(repoid, repo_data):
     return RepositoryData(**prepared)
 
 
+def _prepare_config(repodata, config_parser):
+    for repo in repodata.data:
+        config_parser.add_section(repo.repoid)
+
+        repo_enabled = 1 if repo.enabled else 0
+        config_parser.set(repo.repoid, 'name', repo.name)
+        config_parser.set(repo.repoid, 'baseurl', repo.baseurl)
+        config_parser.set(repo.repoid, 'metalink', repo.metalink)
+        config_parser.set(repo.repoid, 'mirrorlist', repo.mirrorlist)
+        config_parser.set(repo.repoid, 'enabled', repo_enabled)
+
+
 def parse_repofile(repofile):
     """
     Parse the given repo file.
@@ -40,6 +52,21 @@ def parse_repofile(repofile):
         for repoid in cp.sections():
             data.append(_parse_repository(repoid, dict(cp.items(repoid))))
     return RepositoryFile(file=repofile, data=data)
+
+
+def save_repofile(repodata, repofile_path):
+    """
+    Save the given repository data to file.
+
+    :param repodata: Repository data to save
+    :type repodata: RepositoryFile
+    :param repofile_path: Path to the repo file
+    :type repofile_path: str
+    """
+    with open(repofile_path, mode='w') as fp:
+        cp = utils.create_config(repodata)
+        _prepare_config(repodata, cp)
+        cp.write(fp)
 
 
 def get_repodirs():

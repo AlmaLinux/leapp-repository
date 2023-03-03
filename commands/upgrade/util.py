@@ -5,6 +5,7 @@ import os
 import sys
 import shutil
 import tarfile
+import six.moves
 from datetime import datetime
 from contextlib import contextmanager
 
@@ -14,7 +15,7 @@ from leapp.exceptions import CommandError, LeappRuntimeError
 from leapp.repository.scan import find_and_scan_repositories
 from leapp.utils import audit
 from leapp.utils.audit import get_checkpoints, get_connection, get_messages
-from leapp.utils.output import report_unsupported, pretty_block_text
+from leapp.utils.output import report_unsupported, pretty_block_text, pretty_block, Color
 from leapp.utils.report import fetch_upgrade_report_messages, generate_report_file
 from leapp.models import ErrorModel
 
@@ -170,6 +171,44 @@ def warn_if_unsupported(configuration):
     if env.get('LEAPP_UNSUPPORTED', '0') == '1':
         devel_vars = {k: env[k] for k in env if k.startswith('LEAPP_DEVEL_')}
         report_unsupported(devel_vars, configuration["whitelist_experimental"])
+
+
+def ask_to_continue():
+    """
+    Pause before starting the upgrade, warn the user about potential conseqences
+    and ask for confirmation.
+    Only done on whitelisted OS.
+
+    :return: True if it's OK to continue, False if the upgrade should be interrupted.
+    """
+
+    ask_on_os = ['cloudlinux']
+    os_id = command_utils.get_os_release_id('/etc/os-release')
+
+    if os_id not in ask_on_os:
+        return True
+
+    with pretty_block(
+        text="Upgrade workflow initiated",
+        end_text="Continue?",
+        target=sys.stdout,
+        color=Color.bold,
+    ):
+        warn_msg = (
+            "Past this point, Leapp will begin making changes to your system.\n"
+            "An improperly or incompletely configured upgrade may break the system, "
+            "up to and including making it *completely inaccessible*.\n"
+            "Even if you've followed all the preparation steps correctly, "
+            "the chance of the upgrade going wrong remains non-zero.\n"
+            "Make sure you've run the pre-check, checked the logs and reports, and have a backup prepared."
+        )
+        print(warn_msg)
+
+    response = ""
+    while response not in ["y", "n"]:
+        response = six.moves.input("Y/N> ").lower()
+
+    return response == "y"
 
 
 def handle_output_level(args):

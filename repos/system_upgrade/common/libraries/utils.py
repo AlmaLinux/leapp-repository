@@ -43,6 +43,14 @@ def parse_config(cfg=None, strict=True):
     return parser
 
 
+def create_config(repodata):
+    if six.PY3:
+        parser = six.moves.configparser.ConfigParser(strict=strict)  # pylint: disable=unexpected-keyword-arg
+    else:
+        parser = six.moves.configparser.ConfigParser()
+    return parser
+
+
 def makedirs(path, mode=0o777, exists_ok=True):
     mounting._makedirs(path=path, mode=mode, exists_ok=exists_ok)
 
