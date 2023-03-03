@@ -19,7 +19,7 @@ def produce_workaround_msg(pkg_list, reinstall):
         for pkg in rpm_pkgs.items:
             if (pkg.name in pkg_list):
                 preremoved_pkgs.items.append(pkg)
-                api.log.debug("Listing package {} to be pre-removed".format(pkg.name))
+                api.current_logger().debug("Listing package {} to be pre-removed".format(pkg.name))
     if preremoved_pkgs.items:
         api.produce(preremoved_pkgs)
 
