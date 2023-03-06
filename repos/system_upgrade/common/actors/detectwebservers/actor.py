@@ -31,12 +31,17 @@ class DetectWebServers(Actor):
                         "An installed web server might not be upgraded properly."
                     ),
                     reporting.Summary(
-                        "A web server is present on the system."
+                        "A NGINX/LiteSpeed web server is present on the system."
                         " Depending on the source of installation, "
                         " it may not upgrade to the new version correctly,"
-                        " since not all varoants are currently supported by Leapp."
-                        " Please check the list of packages that won't be upgraded in the report."
-                        " Alternatively, upgrade the webserver manually after the process finishes."
+                        " since not all installation configurations are currently supported by Leapp."
+                        " Failing to upgrade the webserver may result in it malfunctioning"
+                        " after the upgrade process finishes."
+                        " Please review the list of packages that won't be upgraded in the report."
+                        " If the web server packages are present in the list of packages that won't be upgraded,"
+                        " expect the server to be non-functional on the post-upgrade system."
+                        " You may still continue with the upgrade, but you'll need to"
+                        " upgrade the web server manually after the process finishes."
                         " Detected webserver: {}.".format(server_name)
                     ),
                     reporting.Severity(reporting.Severity.HIGH),

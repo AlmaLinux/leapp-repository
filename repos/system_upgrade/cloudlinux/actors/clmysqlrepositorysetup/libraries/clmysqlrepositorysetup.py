@@ -68,7 +68,7 @@ def process():
         if repofile_full.endswith(LEAPP_COPY_SUFFIX) or not repofile_full.endswith(REPOFILE_SUFFIX):
             continue
         # Cut the .repo part to get only the name.
-        repofile_name = repofile_full[:-5]
+        repofile_name = repofile_full[:-len(REPOFILE_SUFFIX)]
         full_repo_path = os.path.join(REPO_DIR, repofile_full)
 
         # Parse any repository files that may have something to do with MySQL or MariaDB.
