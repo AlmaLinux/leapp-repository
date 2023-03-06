@@ -182,23 +182,38 @@ def process():
 
     if len(mysql_types) == 0:
         api.current_logger().debug('No installed MySQL/MariaDB detected')
-    elif len(mysql_types) == 1:
-        api.current_logger().debug('Detected MySQL/MariaDB type: {}, version: {}'.format(mysql_types[0], clmysql_type))
     else:
-        api.current_logger().warning('Detected multiple MySQL types: {}'.format(", ".join(mysql_types)))
         reporting.create_report([
-            reporting.Title('Multpile MySQL/MariaDB versions detected'),
+            reporting.Title('MySQL database backup recommended'),
             reporting.Summary(
-                'Package repositories for multiple distributions of MySQL/MariaDB '
-                'were detected on the system. '
-                'Leapp will attempt to update all distributions detected. '
-                'To update only the distribution you use, disable YUM package repositories for all '
-                'other distributions. '
-                'Detected: {0}'.format(", ".join(mysql_types))
+                'A MySQL/MariaDB installation has been detected on this machine. '
+                'It is recommended to make a database backup before proceeding with the upgrade.'
             ),
-            reporting.Severity(reporting.Severity.MEDIUM),
-            reporting.Tags([reporting.Tags.REPOSITORY, reporting.Tags.OS_FACTS]),
+            reporting.Severity(reporting.Severity.HIGH),
+            reporting.Tags([reporting.Tags.REPOSITORY]),
         ])
+
+        if len(mysql_types) == 1:
+            api.current_logger().debug(
+                "Detected MySQL/MariaDB type: {}, version: {}".format(
+                    mysql_types[0], clmysql_type
+                )
+            )
+        else:
+            api.current_logger().warning('Detected multiple MySQL types: {}'.format(", ".join(mysql_types)))
+            reporting.create_report([
+                reporting.Title('Multpile MySQL/MariaDB versions detected'),
+                reporting.Summary(
+                    'Package repositories for multiple distributions of MySQL/MariaDB '
+                    'were detected on the system. '
+                    'Leapp will attempt to update all distributions detected. '
+                    'To update only the distribution you use, disable YUM package repositories for all '
+                    'other distributions. '
+                    'Detected: {0}'.format(", ".join(mysql_types))
+                ),
+                reporting.Severity(reporting.Severity.MEDIUM),
+                reporting.Tags([reporting.Tags.REPOSITORY, reporting.Tags.OS_FACTS]),
+            ])
 
     if 'cloudlinux' in mysql_types and clmysql_type in MODULE_STREAMS.keys():
         mod_name, mod_stream = MODULE_STREAMS[clmysql_type].split(':')
