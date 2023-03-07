@@ -1,8 +1,8 @@
 import os
 from leapp.actors import Actor
-from leapp.tags import ThirdPartyApplicationsPhase, IPUWorkflowTag
+from leapp.tags import ThirdPartyApplicationsPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
-from leapp.libraries.common.backup import backup_file, CLSQL_BACKUP_FILES
+from leapp.libraries.common.backup import restore_file, CLSQL_BACKUP_FILES
 
 
 class RestoreMySqlData(Actor):
@@ -13,10 +13,10 @@ class RestoreMySqlData(Actor):
     name = 'restore_my_sql_data'
     consumes = ()
     produces = ()
-    tags = (ThirdPartyApplicationsPhase, IPUWorkflowTag)
+    tags = (ThirdPartyApplicationsPhaseTag, IPUWorkflowTag)
 
     @run_on_cloudlinux
     def process(self):
         for filename in CLSQL_BACKUP_FILES:
             if os.path.isfile(filename):
-                backup_file(filename, os.path.basename(filename))
+                restore_file(filename, os.path.basename(filename))
