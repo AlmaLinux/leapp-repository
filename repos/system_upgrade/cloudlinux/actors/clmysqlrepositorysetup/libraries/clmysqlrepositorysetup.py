@@ -62,6 +62,7 @@ def build_install_list(prefix):
 def process():
     mysql_types = []
     clmysql_type = None
+    custom_repo_msgs = []
 
     for repofile_full in os.listdir(REPO_DIR):
         # Don't touch non-repository files or copied repofiles created by Leapp.
@@ -77,7 +78,12 @@ def process():
         # Process CL-provided options.
         if any(mark in repofile_name for mark in CL_MARKERS):
             repofile_data = repofileutils.parse_repofile(full_repo_path)
-            api.current_logger().debug('Data from repofile: {}'.format(repofile_data.data))
+            data_to_log = [
+                (repo_data.repoid, "enabled" if repo_data.enabled else "disabled")
+                for repo_data in repofile_data.data
+            ]
+
+            api.current_logger().debug('repoids from CloudLinux repofile {}: {}'.format(repofile_name, data_to_log))
 
             # Were any repositories enabled?
             for repo in repofile_data.data:
@@ -87,15 +93,14 @@ def process():
                 repo.repoid = repo.repoid + '-8'
                 # releasever may be something like 8.6, while only 8 is acceptable.
                 repo.baseurl = repo.baseurl.replace('/cl$releasever/', '/cl8/')
+
                 # mysqlclient is usually disabled when installed from CL MySQL Governor.
                 # However, it should be enabled for the Leapp upgrade, seeing as some packages
                 # from it won't update otherwise.
-
                 if repo.enabled or repo.repoid == 'mysqclient-8':
-                    mysql_types.append('cloudlinux')
                     clmysql_type = get_clmysql_type()
                     api.current_logger().debug('Generating custom cl-mysql repo: {}'.format(repo.repoid))
-                    api.produce(CustomTargetRepository(
+                    custom_repo_msgs.append(CustomTargetRepository(
                         repoid=repo.repoid,
                         name=repo.name,
                         baseurl=repo.baseurl,
@@ -103,7 +108,12 @@ def process():
                     ))
 
             if any(repo.enabled for repo in repofile_data.data):
+                mysql_types.append('cloudlinux')
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
+            else:
+                api.current_logger().debug("No repos from CloudLinux repofile {} enabled, ignoring".format(
+                        repofile_name
+                    ))
 
         # Process MariaDB options.
         elif any(mark in repofile_name for mark in MARIA_MARKERS):
@@ -116,13 +126,12 @@ def process():
                 # We want to replace the 7 in OS name after /yum/
                 repo.repoid = repo.repoid + '-8'
                 if repo.enabled:
-                    mysql_types.append('mariadb')
                     url_parts = repo.baseurl.split('yum')
                     url_parts[1] = 'yum' + url_parts[1].replace('7', '8')
                     repo.baseurl = ''.join(url_parts)
 
                     api.current_logger().debug('Generating custom MariaDB repo: {}'.format(repo.repoid))
-                    api.produce(CustomTargetRepository(
+                    custom_repo_msgs.append(CustomTargetRepository(
                         repoid=repo.repoid,
                         name=repo.name,
                         baseurl=repo.baseurl,
@@ -132,7 +141,12 @@ def process():
             if any(repo.enabled for repo in repofile_data.data):
                 # Since MariaDB URLs have major versions written in, we need a new repo file
                 # to feed to the target userspace.
+                mysql_types.append('mariadb')
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
+            else:
+                api.current_logger().debug("No repos from MariaDB repofile {} enabled, ignoring".format(
+                        repofile_name
+                    ))
 
         # Process MySQL options.
         elif any(mark in repofile_name for mark in MYSQL_MARKERS):
@@ -140,7 +154,6 @@ def process():
 
             for repo in repofile_data.data:
                 if repo.enabled:
-                    mysql_types.append('mysql')
                     # MySQL package repos don't have these versions available for EL8 anymore.
                     # There'll be nothing to upgrade to.
                     # CL repositories do provide them, though.
@@ -170,7 +183,7 @@ def process():
                         repo.repoid = repo.repoid + '-8'
                         repo.baseurl = repo.baseurl.replace('/el/7/', '/el/8/')
                         api.current_logger().debug('Generating custom MySQL repo: {}'.format(repo.repoid))
-                        api.produce(CustomTargetRepository(
+                        custom_repo_msgs.append(CustomTargetRepository(
                             repoid=repo.repoid,
                             name=repo.name,
                             baseurl=repo.baseurl,
@@ -178,7 +191,12 @@ def process():
                         ))
 
             if any(repo.enabled for repo in repofile_data.data):
+                mysql_types.append('mysql')
                 produce_leapp_repofile_copy(repofile_data, repofile_name)
+            else:
+                api.current_logger().debug("No repos from MySQL repofile {} enabled, ignoring".format(
+                        repofile_name
+                    ))
 
     if len(mysql_types) == 0:
         api.current_logger().debug('No installed MySQL/MariaDB detected')
@@ -192,6 +210,9 @@ def process():
             reporting.Severity(reporting.Severity.HIGH),
             reporting.Tags([reporting.Tags.REPOSITORY]),
         ])
+
+        for msg in custom_repo_msgs:
+            api.produce(msg)
 
         if len(mysql_types) == 1:
             api.current_logger().debug(
