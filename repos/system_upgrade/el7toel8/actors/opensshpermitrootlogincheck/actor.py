@@ -54,8 +54,8 @@ class OpenSshPermitRootLoginCheck(Actor):
                     'to log onto this machine after the upgrade. '
                     'To prevent this from occuring, the PermitRootLogin option '
                     'has been explicity set to "yes" to preserve the default behaivour '
-                    'after migration.'
-                    'The original configuration file has been backed up to'
+                    'after migration. '
+                    'The original configuration file has been backed up to '
                     '/etc/ssh/sshd_config.leapp_backup'
                 ),
                 reporting.Severity(reporting.Severity.MEDIUM),
