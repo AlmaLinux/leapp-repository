@@ -64,7 +64,7 @@ def save_repofile(repodata, repofile_path):
     :type repofile_path: str
     """
     with open(repofile_path, mode='w') as fp:
-        cp = utils.create_config(repodata)
+        cp = utils.create_parser()
         _prepare_config(repodata, cp)
         cp.write(fp)
 

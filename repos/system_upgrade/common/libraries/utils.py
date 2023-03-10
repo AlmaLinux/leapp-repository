@@ -43,7 +43,7 @@ def parse_config(cfg=None, strict=True):
     return parser
 
 
-def create_config(repodata):
+def create_parser(strict=True):
     if six.PY3:
         parser = six.moves.configparser.ConfigParser(strict=strict)  # pylint: disable=unexpected-keyword-arg
     else:

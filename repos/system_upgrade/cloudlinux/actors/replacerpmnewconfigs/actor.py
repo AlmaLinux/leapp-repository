@@ -38,6 +38,7 @@ class ReplaceRpmnewConfigs(Actor):
                 os.rename(new_file_path, base_path)
                 renamed_repofiles.append(base_reponame)
 
+        # Disable any old repositories.
         for reponame in os.listdir(REPO_DIR):
             if LEAPP_BACKUP_SUFFIX in reponame:
                 repofile_path = os.path.join(REPO_DIR, reponame)
