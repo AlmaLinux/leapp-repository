@@ -20,7 +20,7 @@ class CheckRhnVersionOverride(Actor):
         with open(up2date_config, 'r') as f:
             config_data = f.readlines()
             for line in config_data:
-                if line.startswith('versionOverride=') and line != 'versionOverride=':
+                if line.startswith('versionOverride=') and line.strip() != 'versionOverride=':
                     title = 'RHN up2date: versionOverride not empty'
                     summary = ('The RHN config file up2date has a set value of the versionOverride option.'
                                ' This value will get overwritten by the upgrade process, and non-supported values'
