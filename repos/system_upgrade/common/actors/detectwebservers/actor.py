@@ -31,7 +31,7 @@ class DetectWebServers(Actor):
                         "An installed web server might not be upgraded properly."
                     ),
                     reporting.Summary(
-                        "A {} web server is present on the system."
+                        "A web server is present on the system."
                         " Depending on the source of installation, "
                         " it may not upgrade to the new version correctly,"
                         " since not all installation configurations are currently supported by Leapp."
@@ -41,7 +41,8 @@ class DetectWebServers(Actor):
                         " If the web server packages are present in the list of packages that won't be upgraded,"
                         " expect the server to be non-functional on the post-upgrade system."
                         " You may still continue with the upgrade, but you'll need to"
-                        " upgrade the web server manually after the process finishes.".format(server_name)
+                        " upgrade the web server manually after the process finishes."
+                        " Detected webserver: {}.".format(server_name)
                     ),
                     reporting.Severity(reporting.Severity.HIGH),
                     reporting.Tags([
