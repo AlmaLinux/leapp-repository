@@ -1,6 +1,7 @@
 from leapp.actors import Actor
 from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
 from leapp import reporting
+from leapp.reporting import Report
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 try:
@@ -21,7 +22,7 @@ class EnableYumSpacewalkPlugin(Actor):
 
     name = 'enable_yum_spacewalk_plugin'
     consumes = ()
-    produces = ()
+    produces = (Report,)
     tags = (FirstBootPhaseTag, IPUWorkflowTag)
 
     config = '/etc/yum/pluginconf.d/spacewalk.conf'

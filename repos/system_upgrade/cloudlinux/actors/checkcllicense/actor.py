@@ -1,5 +1,6 @@
 from leapp.actors import Actor
 from leapp import reporting
+from leapp.reporting import Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import CalledProcessError, run
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
@@ -14,7 +15,7 @@ class CheckClLicense(Actor):
 
     name = 'check_cl_license'
     consumes = ()
-    produces = ()
+    produces = (Report,)
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
     system_id_path = '/etc/sysconfig/rhn/systemid'

@@ -4,6 +4,7 @@ from leapp.tags import DownloadPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import CalledProcessError, run
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 from leapp import reporting
+from leapp.reporting import Report
 
 
 class SwitchClnChannel(Actor):
@@ -13,7 +14,7 @@ class SwitchClnChannel(Actor):
 
     name = "switch_cln_channel"
     consumes = ()
-    produces = ()
+    produces = (Report,)
     tags = (IPUWorkflowTag, DownloadPhaseTag.Before)
 
     switch_bin = "/usr/sbin/cln-switch-channel"

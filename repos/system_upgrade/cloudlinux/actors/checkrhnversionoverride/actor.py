@@ -1,5 +1,6 @@
 from leapp.actors import Actor
 from leapp import reporting
+from leapp.reporting import Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
@@ -11,7 +12,7 @@ class CheckRhnVersionOverride(Actor):
 
     name = 'check_rhn_version_override'
     consumes = ()
-    produces = ()
+    produces = (Report,)
     tags = (ChecksPhaseTag, IPUWorkflowTag)
 
     @run_on_cloudlinux
