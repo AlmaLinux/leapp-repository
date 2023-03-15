@@ -8,7 +8,8 @@ from leapp import reporting
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 REPO_DIR = '/etc/yum.repos.d'
-CL_MARKERS = ['cloudlinux', 'imunify']
+REPO_DELETE_MARKERS = ['cloudlinux', 'imunify', 'epel']
+REPO_BACKUP_MARKERS = []
 RPMNEW = '.rpmnew'
 LEAPP_BACKUP_SUFFIX = '.leapp-backup'
 
@@ -25,11 +26,21 @@ class ReplaceRpmnewConfigs(Actor):
 
     @run_on_cloudlinux
     def process(self):
+        deleted_repofiles = []
         renamed_repofiles = []
 
         for reponame in os.listdir(REPO_DIR):
-            if any(mark in reponame for mark in CL_MARKERS) and RPMNEW in reponame:
-                base_reponame = reponame[:-7]
+            if any(mark in reponame for mark in REPO_DELETE_MARKERS) and RPMNEW in reponame:
+                base_reponame = reponame[:-len(RPMNEW)]
+                base_path = os.path.join(REPO_DIR, base_reponame)
+                new_file_path = os.path.join(REPO_DIR, reponame)
+
+                os.unlink(base_path)
+                os.rename(new_file_path, base_path)
+                renamed_repofiles.append(base_reponame)
+
+            if any(mark in reponame for mark in REPO_BACKUP_MARKERS) and RPMNEW in reponame:
+                base_reponame = reponame[:-len(RPMNEW)]
                 base_path = os.path.join(REPO_DIR, base_reponame)
                 new_file_path = os.path.join(REPO_DIR, reponame)
                 backup_path = os.path.join(REPO_DIR, base_reponame + LEAPP_BACKUP_SUFFIX)
@@ -49,16 +60,18 @@ class ReplaceRpmnewConfigs(Actor):
                         print(line, end='')
 
         if renamed_repofiles:
+            deleted_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in deleted_repofiles])
             replaced_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in renamed_repofiles])
             reporting.create_report([
                 reporting.Title('CloudLinux repository config files replaced by updated versions'),
                 reporting.Summary(
-                    'One or more RPM repository configuration files related to CloudLinux '
+                    'One or more RPM repository configuration files '
                     'have been replaced with new versions provided by the upgraded packages. '
                     'Any manual modifications to these files have been overriden by this process. '
-                    'Old versions of files were backed up to files with a naming pattern '
+                    'Old versions of backed up files are contained in files with a naming pattern '
                     '<repository_file_name>.leapp-backup. '
-                    'Replaced repository files: \n{}'.format(replaced_string)
+                    'Deleted repository files: \n{} '
+                    'Backed up repository files: \n{}'.format(deleted_string, replaced_string)
                 ),
                 reporting.Severity(reporting.Severity.MEDIUM),
                 reporting.Tags([reporting.Tags.UPGRADE_PROCESS])
