@@ -4,12 +4,14 @@ from leapp.libraries.stdlib import api
 from leapp.models import MemoryInfo, InstalledControlPanel
 
 from leapp.libraries.common.detectcontrolpanel import (
+    NOPANEL_NAME,
     UNKNOWN_NAME,
     INTEGRATED_NAME,
     CPANEL_NAME,
 )
 
 required_memory = {
+    NOPANEL_NAME: 1536 * 1024,  # 1.5 Gb
     UNKNOWN_NAME: 1536 * 1024,  # 1.5 Gb
     INTEGRATED_NAME: 1536 * 1024,  # 1.5 Gb
     CPANEL_NAME: 2048 * 1024,  # 2 Gb

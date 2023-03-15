@@ -7,6 +7,7 @@ from leapp.exceptions import StopActorExecutionError
 
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 from leapp.libraries.common.detectcontrolpanel import (
+    NOPANEL_NAME,
     UNKNOWN_NAME,
     INTEGRATED_NAME,
     CPANEL_NAME,
@@ -31,7 +32,7 @@ class DetectControlPanel(Actor):
 
         if panel.name == CPANEL_NAME:
             self.log.debug('cPanel detected, upgrade proceeding')
-        elif panel.name == INTEGRATED_NAME or panel.name == UNKNOWN_NAME:
+        elif panel.name == INTEGRATED_NAME or panel.name == UNKNOWN_NAME or panel.name == NOPANEL_NAME:
             self.log.debug('Integrated/no panel detected, upgrade proceeding')
         elif panel:
             # Block the upgrade on any systems with a non-supported panel detected.

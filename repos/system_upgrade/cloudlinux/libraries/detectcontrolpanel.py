@@ -4,12 +4,13 @@ import os.path
 from leapp.libraries.stdlib import api
 
 
+NOPANEL_NAME = 'No panel'
 CPANEL_NAME = 'cPanel'
 DIRECTADMIN_NAME = 'DirectAdmin'
 PLESK_NAME = 'Plesk'
 ISPMANAGER_NAME = 'ISPManager'
 INTERWORX_NAME = 'InterWorx'
-UNKNOWN_NAME = 'Unknown'
+UNKNOWN_NAME = 'Unknown (legacy)'
 INTEGRATED_NAME = 'Integrated'
 
 CLSYSCONFIG = '/etc/sysconfig/cloudlinux'
@@ -45,7 +46,7 @@ def detect_panel():
     This function will try to detect control panels supported by CloudLinux
     :return: Detected control panel name or None
     """
-    panel_name = None
+    panel_name = NOPANEL_NAME
     if os.path.isfile('/opt/cpvendor/etc/integration.ini'):
         panel_name = INTEGRATED_NAME
     elif os.path.isfile('/usr/local/cpanel/cpanel'):
