@@ -3,8 +3,9 @@ import os
 import fileinput
 
 from leapp.actors import Actor
-from leapp.tags import FirstBootPhaseTag, IPUWorkflowTag
+from leapp.tags import ApplicationsPhaseTag, IPUWorkflowTag
 from leapp import reporting
+from leapp.reporting import Report
 from leapp.libraries.common.cllaunch import run_on_cloudlinux
 
 REPO_DIR = '/etc/yum.repos.d'
@@ -21,8 +22,8 @@ class ReplaceRpmnewConfigs(Actor):
 
     name = 'replace_rpmnew_configs'
     consumes = ()
-    produces = ()
-    tags = (FirstBootPhaseTag, IPUWorkflowTag)
+    produces = (Report,)
+    tags = (ApplicationsPhaseTag, IPUWorkflowTag)
 
     @run_on_cloudlinux
     def process(self):
@@ -37,7 +38,8 @@ class ReplaceRpmnewConfigs(Actor):
 
                 os.unlink(base_path)
                 os.rename(new_file_path, base_path)
-                renamed_repofiles.append(base_reponame)
+                deleted_repofiles.append(base_reponame)
+                self.log.debug('Yum repofile replaced: {}'.format(base_path))
 
             if any(mark in reponame for mark in REPO_BACKUP_MARKERS) and RPMNEW in reponame:
                 base_reponame = reponame[:-len(RPMNEW)]
@@ -48,6 +50,7 @@ class ReplaceRpmnewConfigs(Actor):
                 os.rename(base_path, backup_path)
                 os.rename(new_file_path, base_path)
                 renamed_repofiles.append(base_reponame)
+                self.log.debug('Yum repofile replaced with backup: {}'.format(base_path))
 
         # Disable any old repositories.
         for reponame in os.listdir(REPO_DIR):
