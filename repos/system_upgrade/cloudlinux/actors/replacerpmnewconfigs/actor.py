@@ -62,9 +62,9 @@ class ReplaceRpmnewConfigs(Actor):
                     else:
                         print(line, end='')
 
-        if renamed_repofiles:
-            deleted_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in deleted_repofiles])
-            replaced_string = '\n'.join(['- {}'.format(repofile_name) for repofile_name in renamed_repofiles])
+        if renamed_repofiles or deleted_repofiles:
+            deleted_string = '\n'.join(['{}'.format(repofile_name) for repofile_name in deleted_repofiles])
+            replaced_string = '\n'.join(['{}'.format(repofile_name) for repofile_name in renamed_repofiles])
             reporting.create_report([
                 reporting.Title('CloudLinux repository config files replaced by updated versions'),
                 reporting.Summary(
@@ -73,7 +73,7 @@ class ReplaceRpmnewConfigs(Actor):
                     'Any manual modifications to these files have been overriden by this process. '
                     'Old versions of backed up files are contained in files with a naming pattern '
                     '<repository_file_name>.leapp-backup. '
-                    'Deleted repository files: \n{} '
+                    'Deleted repository files: \n{}\n'
                     'Backed up repository files: \n{}'.format(deleted_string, replaced_string)
                 ),
                 reporting.Severity(reporting.Severity.MEDIUM),
