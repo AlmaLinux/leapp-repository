@@ -34,7 +34,7 @@ class CheckLeftoverPackages(Actor):
 
     def skip_leftover_pkg(self, name, unsigned_set):
         # Packages like these are expected to be not updated.
-        is_unsigned = name not in unsigned_set
+        is_unsigned = name in unsigned_set
         # Packages like these are updated outside of Leapp.
         is_external = name.startswith(CPANEL_SUFFIX)
 
