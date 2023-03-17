@@ -1,22 +1,21 @@
 from leapp import reporting
 from leapp.models import PkgManagerInfo, RHUIInfo
 from leapp.libraries.stdlib import api
+from leapp.libraries.common.config.version import get_target_major_version
 
 
 def handle_etc_releasever():
 
-    target_version = api.current_actor().configuration.version.target
+    target_version = get_target_major_version()
     reporting.create_report([
         reporting.Title(
-            'Release version in /etc/dnf/vars/releasever will be set to the current target release'
+            'Release version in /etc/dnf/vars/releasever will be set to the major target release'
         ),
         reporting.Summary(
             'On this system, Leapp detected "releasever" variable is either configured through DNF/YUM configuration '
             'file and/or the system is using RHUI infrastructure. In order to avoid issues with repofile URLs '
             '(when --release option is not provided) in cases where there is the previous major.minor version value '
-            'in the configuration, release version will be set to the target release version ({}). This will also '
-            'ensure the system stays on the target version after the upgrade. In order to enable latest minor version '
-            'updates, you can remove "/etc/dnf/vars/releasever" file.'.format(
+            'in the configuration, release version will be set to the major target release version ({}).'.format(
                 target_version
             )
         ),

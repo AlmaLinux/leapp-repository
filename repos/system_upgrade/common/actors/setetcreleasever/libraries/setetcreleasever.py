@@ -1,5 +1,6 @@
 from leapp.libraries.stdlib import api
 from leapp.models import PkgManagerInfo, RHUIInfo
+from leapp.libraries.common.config.version import get_target_major_version
 
 
 def _set_releasever(releasever):
@@ -10,7 +11,7 @@ def _set_releasever(releasever):
 
 
 def process():
-    target_version = api.current_actor().configuration.version.target
+    target_version = get_target_major_version()
 
     pkg_facts = next(api.consume(PkgManagerInfo), None)
     rhui_facts = next(api.consume(RHUIInfo), None)
