@@ -8,6 +8,7 @@ import tarfile
 import six.moves
 from datetime import datetime
 from contextlib import contextmanager
+import six
 
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
@@ -316,9 +317,13 @@ def log_errors(errors, logger):
 
         for error in errors:
             model = ErrorModel.create(json.loads(error['message']['data']))
+            error_message = model.message
+            if six.PY2:
+                error_message = model.message.encode('utf-8', 'xmlcharrefreplace')
+
             logger.error("{time} [{severity}] Actor: {actor}\nMessage: {message}\n".format(
                 severity=model.severity.upper(),
-                message=model.message, time=model.time, actor=model.actor))
+                message=error_message, time=model.time, actor=model.actor))
             if model.details:
                 print('Summary:')
                 details = json.loads(model.details)
