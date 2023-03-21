@@ -114,3 +114,29 @@ def exclude_leapp_rpms(context):
     """
     to_exclude = list(set(_get_excluded_pkgs(context) + get_leapp_packages()))
     _set_excluded_pkgs(context, to_exclude)
+
+
+def enable_repository(context, reponame):
+    _set_repository_state(context, reponame, "enabled")
+
+
+def disable_repository(context, reponame):
+    _set_repository_state(context, reponame, "disabled")
+
+
+def _set_repository_state(context, reponame, new_state):
+    """
+    """
+    if new_state == "enabled":
+        cmd_flag = '--set-enabled'
+    elif new_state == "disabled":
+        cmd_flag = '--set-disabled'
+
+    cmd = ['dnf', 'config-manager', cmd_flag, reponame]
+
+    try:
+        context.call(cmd)
+    except CalledProcessError:
+        api.current_logger().error('Cannot set the dnf configuration')
+        raise
+    api.current_logger().debug('Repository {} has been {}'.format(reponame, new_state))
