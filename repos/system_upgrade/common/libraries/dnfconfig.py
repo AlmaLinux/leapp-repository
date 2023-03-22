@@ -124,19 +124,20 @@ def disable_repository(context, reponame):
     _set_repository_state(context, reponame, "disabled")
 
 
-def _set_repository_state(context, reponame, new_state):
+def _set_repository_state(context, repo_id, new_state):
     """
+    Set the Yum repository with the provided ID as enabled or disabled.
     """
     if new_state == "enabled":
         cmd_flag = '--set-enabled'
     elif new_state == "disabled":
         cmd_flag = '--set-disabled'
 
-    cmd = ['dnf', 'config-manager', cmd_flag, reponame]
+    cmd = ['dnf', 'config-manager', cmd_flag, repo_id]
 
     try:
         context.call(cmd)
     except CalledProcessError:
         api.current_logger().error('Cannot set the dnf configuration')
         raise
-    api.current_logger().debug('Repository {} has been {}'.format(reponame, new_state))
+    api.current_logger().debug('Repository {} has been {}'.format(repo_id, new_state))
