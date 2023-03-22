@@ -1,6 +1,7 @@
 from leapp.actors import Actor
 from leapp.libraries.stdlib import api
 from leapp.libraries.common import dnfconfig, mounting, repofileutils
+from leapp.libraries.common.cllaunch import run_on_cloudlinux
 from leapp.models import (
     RepositoriesFacts,
 )
@@ -20,6 +21,7 @@ class RestoreRepositoryConfigurations(Actor):
     produces = ()
     tags = (ApplicationsPhaseTag.After, IPUWorkflowTag)
 
+    @run_on_cloudlinux
     def process(self):
         current_repofiles = repofileutils.get_parsed_repofiles()
         current_repository_list = []
