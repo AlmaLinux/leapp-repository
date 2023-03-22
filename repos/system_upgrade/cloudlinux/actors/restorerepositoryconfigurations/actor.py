@@ -9,14 +9,16 @@ from leapp.tags import ApplicationsPhaseTag, IPUWorkflowTag
 
 class RestoreRepositoryConfigurations(Actor):
     """
-    Go over the list of repositories that were present on the pre-upgrade system and compare them to the current list (after the main upgrade transaction).
-    If any of the repositories with same repoIDs have changed their enabled state, due to changes coming from RPM package updates or something else, restore their enabled settings to the pre-upgrade state.
+    Go over the list of repositories that were present on the pre-upgrade system and compare them to the
+    current list (after the main upgrade transaction).
+    If any of the repositories with same repoIDs have changed their enabled state, due to changes coming
+    from RPM package updates or something else, restore their enabled settings to the pre-upgrade state.
     """
 
     name = 'restore_repository_configurations'
     consumes = (RepositoriesFacts)
     produces = ()
-    tags = (ApplicationsPhaseTag, IPUWorkflowTag)
+    tags = (ApplicationsPhaseTag.After, IPUWorkflowTag)
 
     def process(self):
         current_repofiles = repofileutils.get_parsed_repofiles()
