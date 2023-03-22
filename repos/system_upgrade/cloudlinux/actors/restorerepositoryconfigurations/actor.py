@@ -25,7 +25,8 @@ class RestoreRepositoryConfigurations(Actor):
             current_repository_list.extend(repofile.data)
         current_repodict = dict((repo.repoid, repo) for repo in current_repository_list)
 
-        self.log.debug("Repositories currently present on the system: {}".format(current_repodict.keys()))
+        current_repoids_string = ", ".join(current_repodict.keys())
+        self.log.debug("Repositories currently present on the system: {}".format(current_repoids_string))
 
         cmd_context = mounting.NotIsolatedActions(base_dir='/')
 
