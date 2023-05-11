@@ -2,8 +2,6 @@ import os
 import sys
 import uuid
 
-from raven import Client
-from raven.transport.http import HTTPTransport
 
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
@@ -84,7 +82,12 @@ def upgrade(args, breadcrumbs):
     sentry_client = None
     sentry_dsn = cfg.get('sentry', 'dsn')
     if sentry_dsn:
-        sentry_client = Client(sentry_dsn, transport=HTTPTransport)
+        try:
+            from raven import Client
+            from raven.transport.http import HTTPTransport
+            sentry_client = Client(sentry_dsn, transport=HTTPTransport)
+        except ImportError:
+            logger.warn("Cannot import the Raven library - remote error logging not functional")
 
     if args.resume:
         logger.info("Resuming execution after phase: %s", skip_phases_until)
