@@ -293,20 +293,18 @@ def pretty_block_log(string, logger_level, width=60):
 
 
 @contextmanager
-def format_actor_exceptions(logger):
+def format_actor_exceptions(logger, sentry):
     try:
         try:
             yield
         except LeappRuntimeError as e:
-            # TODO: This only reports the actor that raised an exception
-            # and the return code.
-            # The traceback gets eaten on the framework level, and is only
-            # seen in stderr. Changing that will require modifying the framework
-            # code itself.
             msg = '{} - Please check the above details'.format(e.message)
             sys.stderr.write("\n")
             sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
             logger.error(e.message)
+            logger.error(e.exception_info)
+            if sentry:
+                sentry.captureMessage("{}\n{}".format(e.message, e.exception_info))
     finally:
         pass
 

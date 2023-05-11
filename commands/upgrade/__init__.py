@@ -101,7 +101,7 @@ def upgrade(args, breadcrumbs):
             logger.info("Upgrade cancelled by user")
             sys.exit(1)
 
-    with util.format_actor_exceptions(logger):
+    with util.format_actor_exceptions(logger, sentry_client):
         logger.info("Using answerfile at %s", answerfile_path)
         workflow.load_answers(answerfile_path, userchoices_path)
 
@@ -109,7 +109,7 @@ def upgrade(args, breadcrumbs):
         os.environ['LC_ALL'] = 'en_US.UTF-8'
         os.environ['LANG'] = 'en_US.UTF-8'
         workflow.run(context=context, skip_phases_until=skip_phases_until, skip_dialogs=True,
-                     only_with_tags=only_with_tags, sentry_client=sentry_client)
+                     only_with_tags=only_with_tags)
 
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
