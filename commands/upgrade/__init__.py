@@ -2,6 +2,9 @@ import os
 import sys
 import uuid
 
+from raven import Client
+from raven.transport.http import HTTPTransport
+
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
 from leapp.cli.commands.upgrade import breadcrumbs, util
@@ -78,6 +81,11 @@ def upgrade(args, breadcrumbs):
     logger = configure_logger('leapp-upgrade.log')
     os.environ['LEAPP_EXECUTION_ID'] = context
 
+    sentry_client = None
+    sentry_dsn = cfg.get('sentry', 'dsn')
+    if sentry_dsn:
+        sentry_client = Client(sentry_dsn, transport=HTTPTransport)
+
     if args.resume:
         logger.info("Resuming execution after phase: %s", skip_phases_until)
     try:
@@ -101,7 +109,7 @@ def upgrade(args, breadcrumbs):
         os.environ['LC_ALL'] = 'en_US.UTF-8'
         os.environ['LANG'] = 'en_US.UTF-8'
         workflow.run(context=context, skip_phases_until=skip_phases_until, skip_dialogs=True,
-                     only_with_tags=only_with_tags)
+                     only_with_tags=only_with_tags, sentry_client=sentry_client)
 
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
