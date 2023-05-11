@@ -298,7 +298,7 @@ def format_actor_exceptions(logger, sentry):
         try:
             yield
         except LeappRuntimeError as err:
-            msg = '{} - Please check the above details'.format(err.message)
+            msg = f'{err.message} - Please check the above details'
             sys.stderr.write("\n")
             sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
             logger.error(err.message)
