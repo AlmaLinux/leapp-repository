@@ -117,7 +117,7 @@ def upgrade(args, breadcrumbs):
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
     util.log_errors(workflow.errors, logger)
-    util.log_inhibitors(context, logger)
+    util.log_inhibitors(context, logger, sentry_client)
     report_errors(workflow.errors)
     report_inhibitors(context)
     util.generate_report_files(context, report_schema)

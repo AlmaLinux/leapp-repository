@@ -304,7 +304,7 @@ def format_actor_exceptions(logger, sentry):
             logger.error(err.message)
             logger.error(err.exception_info)
             if sentry:
-                sentry.captureMessage(f"{err.message}\n{err.exception_info}")
+                sentry.captureException(extra={"exception_info": err.exception_info})
     finally:
         pass
 
@@ -331,7 +331,7 @@ def log_errors(errors, logger):
                         v=details[detail].rstrip().replace('\n', '\n' + ' ' * (6 + len(detail)))))
 
 
-def log_inhibitors(context_id, logger):
+def log_inhibitors(context_id, logger, sentry):
     from leapp.reporting import Flags  # pylint: disable=import-outside-toplevel
     reports = fetch_upgrade_report_messages(context_id)
     inhibitors = [report for report in reports if Flags.INHIBITOR in report.get('flags', [])]
@@ -341,3 +341,12 @@ def log_inhibitors(context_id, logger):
         for position, report in enumerate(inhibitors, start=1):
             logger.error('{idx:5}. Inhibitor: {title}'.format(idx=position, title=report['title']))
         logger.info('Consult the pre-upgrade report for details and possible remediation.')
+
+        if sentry:
+            for inhibitor in inhibitors:
+                sentry.captureMessage(
+                    f"Inhibitor: {inhibitor['title']}\n"
+                    f"Severity: {inhibitor['severity']}\n"
+                    f"{inhibitor['summary']}"
+                )
+
