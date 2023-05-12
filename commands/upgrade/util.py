@@ -21,8 +21,6 @@ from leapp.utils.report import fetch_upgrade_report_messages, generate_report_fi
 from leapp.models import ErrorModel
 
 
-
-
 def disable_database_sync():
     def disable_db_sync_decorator(f):
         @functools.wraps(f)
@@ -345,8 +343,12 @@ def log_inhibitors(context_id, logger, sentry):
         if sentry:
             for inhibitor in inhibitors:
                 sentry.captureMessage(
-                    f"Inhibitor: {inhibitor['title']}\n"
-                    f"Severity: {inhibitor['severity']}\n"
-                    f"{inhibitor['summary']}"
+                    "Inhibitor: {}\n"
+                    "Severity: {}\n"
+                    "{}".format(
+                        inhibitor['title'],
+                        inhibitor['severity'],
+                        inhibitor['summary']
+                    )
                 )
 
