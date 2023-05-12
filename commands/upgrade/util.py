@@ -300,9 +300,9 @@ def format_actor_exceptions(logger, sentry):
             sys.stderr.write("\n")
             sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
             logger.error(err.message)
-            logger.error(err.exception_info)
             if sentry:
-                sentry.captureException(extra={"exception_info": err.exception_info})
+                sent_code = sentry.captureException()
+                logger.info("Error \"{}\" sent to Sentry with code {}".format(err, sent_code))
     finally:
         pass
 
@@ -351,4 +351,4 @@ def log_inhibitors(context_id, logger, sentry):
                         inhibitor['summary']
                     )
                 )
-
+                logger.info("Inhibitor \"{}\" sent to Sentry".format(inhibitor['title']))
