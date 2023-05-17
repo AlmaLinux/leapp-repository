@@ -48,6 +48,16 @@ def preupgrade(args, breadcrumbs):
     logger = configure_logger('leapp-preupgrade.log')
     os.environ['LEAPP_EXECUTION_ID'] = context
 
+    sentry_client = None
+    sentry_dsn = cfg.get('sentry', 'dsn')
+    if sentry_dsn:
+        try:
+            from raven import Client
+            from raven.transport.http import HTTPTransport
+            sentry_client = Client(sentry_dsn, transport=HTTPTransport)
+        except ImportError:
+            logger.warn("Cannot import the Raven library - remote error logging not functional")
+
     try:
         repositories = util.load_repositories()
     except LeappError as exc:
@@ -56,7 +66,8 @@ def preupgrade(args, breadcrumbs):
     workflow = repositories.lookup_workflow('IPUWorkflow')()
     util.warn_if_unsupported(configuration)
     util.process_whitelist_experimental(repositories, workflow, configuration, logger)
-    with beautify_actor_exception():
+
+    with util.format_actor_exceptions(logger, sentry_client):
         workflow.load_answers(answerfile_path, userchoices_path)
         until_phase = 'ReportsPhase'
         logger.info('Executing workflow until phase: %s', until_phase)
@@ -68,12 +79,17 @@ def preupgrade(args, breadcrumbs):
 
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
-    util.generate_report_files(context, report_schema)
+
+    util.log_errors(workflow.errors, logger)
+    util.log_inhibitors(context, logger, sentry_client)
     report_errors(workflow.errors)
     report_inhibitors(context)
+
+    util.generate_report_files(context, report_schema)
     report_files = util.get_cfg_files('report', cfg)
     log_files = util.get_cfg_files('logs', cfg)
     report_info(report_files, log_files, answerfile_path, fail=workflow.failure)
+
     if workflow.failure:
         sys.exit(1)
 
