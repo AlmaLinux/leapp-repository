@@ -137,6 +137,8 @@ Requires:   pciutils
 # Required to gather system facts about SELinux
 Requires:   libselinux-python
 Requires:   python-pyudev
+# Required to gather data about actor exceptions or inhibitors
+Requires:   python-raven
 # required by SELinux actors
 Requires:   policycoreutils-python
 # Required to fetch leapp data
@@ -147,6 +149,8 @@ Requires:   python-requests
 # systemd-nspawn utility
 Requires:   systemd-container
 Requires:   python3-pyudev
+# Required to gather data about actor exceptions or inhibitors
+Requires:   python3-raven
 # Required to fetch leapp data
 Requires:   python3-requests
 # Required because the code is kept Py2 & Py3 compatible
