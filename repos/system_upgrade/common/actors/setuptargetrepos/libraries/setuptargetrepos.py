@@ -152,11 +152,12 @@ def process():
     # initialise basic data
     repomap = _setup_repomap_handler(enabled_repoids, mapping_list)
     mapped_repoids = _get_mapped_repoids(repomap, enabled_repoids)
+    api.current_logger().debug('Mapped repos: {}'.format(mapped_repoids))
     skipped_repoids = enabled_repoids & set(used_repoids_dict.keys()) - mapped_repoids
 
     # Now get the info what should be the target RHEL repositories
     expected_repos = repomap.get_expected_target_pesid_repos(enabled_repoids)
-    api.current_logger().debug('Expected repos: {}'.format(expected_repos))
+    api.current_logger().debug('Expected repos: {}'.format(expected_repos.keys()))
     target_rhel_repoids = set()
     for target_pesid, target_pesidrepo in expected_repos.items():
         if not target_pesidrepo:
