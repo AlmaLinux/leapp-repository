@@ -125,7 +125,12 @@ def process():
     api.current_logger().debug('Current kernel EVR: {}'.format(current_evr))
     api.current_logger().debug('Newest kernel EVR: {}'.format(newest_evr))
 
-    if current_evr != newest_evr:
+    # LVE kernels can be installed over newer kernels and be older
+    # than the most current avalable ones - that's not an inhibitor, it's expected
+    # They're marked with 'lve' in the release string
+    lve_kernel = "lve" in current_evr[2]
+
+    if current_evr != newest_evr and not lve_kernel:
         title = 'Newest installed kernel not in use'
         summary = ('To ensure a stable upgrade, the machine needs to be'
                    ' booted into the latest installed kernel.')
