@@ -41,7 +41,7 @@ VENDOR_PACKAGERS = {
 
 
 class VendorSignedRpmScanner(Actor):
-    """Provide data about installed RPM Packages signed by Red Hat.
+    """Provide data about installed RPM Packages signed by known packagers.
 
     After filtering the list of installed RPM packages by signature, a message
     with relevant data will be produced.
