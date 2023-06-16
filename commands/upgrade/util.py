@@ -21,6 +21,8 @@ from leapp.utils.report import fetch_upgrade_report_messages, generate_report_fi
 from leapp.models import ErrorModel
 
 
+
+
 def disable_database_sync():
     def disable_db_sync_decorator(f):
         @functools.wraps(f)
@@ -291,7 +293,7 @@ def pretty_block_log(string, logger_level, width=60):
 
 
 @contextmanager
-def format_actor_exceptions(logger, sentry):
+def format_actor_exceptions(logger):
     try:
         try:
             yield
@@ -299,10 +301,7 @@ def format_actor_exceptions(logger, sentry):
             msg = "{} - Please check the above details".format(err.message)
             sys.stderr.write("\n")
             sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
-            logger.error(err.message)
-            if sentry:
-                sent_code = sentry.captureException()
-                logger.info("Error \"{}\" sent to Sentry with code {}".format(err, sent_code))
+            logger.error(e.message)
     finally:
         pass
 
@@ -329,7 +328,7 @@ def log_errors(errors, logger):
                         v=details[detail].rstrip().replace('\n', '\n' + ' ' * (6 + len(detail)))))
 
 
-def log_inhibitors(context_id, logger, sentry):
+def log_inhibitors(context_id, logger):
     from leapp.reporting import Flags  # pylint: disable=import-outside-toplevel
     reports = fetch_upgrade_report_messages(context_id)
     inhibitors = [report for report in reports if Flags.INHIBITOR in report.get('flags', [])]
@@ -339,16 +338,3 @@ def log_inhibitors(context_id, logger, sentry):
         for position, report in enumerate(inhibitors, start=1):
             logger.error('{idx:5}. Inhibitor: {title}'.format(idx=position, title=report['title']))
         logger.info('Consult the pre-upgrade report for details and possible remediation.')
-
-        if sentry:
-            for inhibitor in inhibitors:
-                sentry.captureMessage(
-                    "Inhibitor: {}\n"
-                    "Severity: {}\n"
-                    "{}".format(
-                        inhibitor['title'],
-                        inhibitor['severity'],
-                        inhibitor['summary']
-                    )
-                )
-                logger.info("Inhibitor \"{}\" sent to Sentry".format(inhibitor['title']))

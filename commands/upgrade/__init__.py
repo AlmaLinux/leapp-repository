@@ -9,7 +9,7 @@ from leapp.exceptions import CommandError, LeappError
 from leapp.logger import configure_logger
 from leapp.utils.audit import Execution
 from leapp.utils.clicmd import command, command_opt
-from leapp.utils.output import report_errors, report_info, report_inhibitors
+from leapp.utils.output import beautify_actor_exception, report_errors, report_info, report_inhibitors
 
 # NOTE:
 # If you are adding new parameters please ensure that they are set in the upgrade function invocation in `rerun`
@@ -78,16 +78,6 @@ def upgrade(args, breadcrumbs):
     logger = configure_logger('leapp-upgrade.log')
     os.environ['LEAPP_EXECUTION_ID'] = context
 
-    sentry_client = None
-    sentry_dsn = cfg.get('sentry', 'dsn')
-    if sentry_dsn:
-        try:
-            from raven import Client
-            from raven.transport.http import HTTPTransport
-            sentry_client = Client(sentry_dsn, transport=HTTPTransport)
-        except ImportError:
-            logger.warn("Cannot import the Raven library - remote error logging not functional")
-
     if args.resume:
         logger.info("Resuming execution after phase: %s", skip_phases_until)
     try:
@@ -103,7 +93,7 @@ def upgrade(args, breadcrumbs):
             logger.info("Upgrade cancelled by user")
             sys.exit(1)
 
-    with util.format_actor_exceptions(logger, sentry_client):
+    with util.format_actor_exceptions(logger):
         logger.info("Using answerfile at %s", answerfile_path)
         workflow.load_answers(answerfile_path, userchoices_path)
 
@@ -115,12 +105,10 @@ def upgrade(args, breadcrumbs):
 
     logger.info("Answerfile will be created at %s", answerfile_path)
     workflow.save_answers(answerfile_path, userchoices_path)
-
     util.log_errors(workflow.errors, logger)
-    util.log_inhibitors(context, logger, sentry_client)
+    util.log_inhibitors(context, logger)
     report_errors(workflow.errors)
     report_inhibitors(context)
-
     util.generate_report_files(context, report_schema)
     report_files = util.get_cfg_files('report', cfg)
     log_files = util.get_cfg_files('logs', cfg)
