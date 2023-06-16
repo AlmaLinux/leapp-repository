@@ -1,6 +1,7 @@
 import os
 import sys
 import uuid
+from six.moves import configparser
 
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
@@ -79,14 +80,17 @@ def upgrade(args, breadcrumbs):
     os.environ['LEAPP_EXECUTION_ID'] = context
 
     sentry_client = None
-    sentry_dsn = cfg.get('sentry', 'dsn')
-    if sentry_dsn:
-        try:
-            from raven import Client
-            from raven.transport.http import HTTPTransport
-            sentry_client = Client(sentry_dsn, transport=HTTPTransport)
-        except ImportError:
-            logger.warn("Cannot import the Raven library - remote error logging not functional")
+    try:
+        sentry_dsn = cfg.get('sentry', 'dsn')
+        if sentry_dsn:
+            try:
+                from raven import Client
+                from raven.transport.http import HTTPTransport
+                sentry_client = Client(sentry_dsn, transport=HTTPTransport)
+            except ImportError:
+                logger.warn("Cannot import the Raven library - remote error logging not functional")
+    except (configparser.NoSectionError, configparser.NoSectionError) as err:
+        logger.info("Sentry configuration not found due to '{}' - continuing without".format(err))
 
     if args.resume:
         logger.info("Resuming execution after phase: %s", skip_phases_until)
