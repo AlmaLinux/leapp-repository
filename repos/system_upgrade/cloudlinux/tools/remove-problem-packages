@@ -2,3 +2,5 @@
 
 # can't be removed in the main transaction due to errors in %preun
 yum -y --setopt=tsflags=noscripts remove gettext-devel
+# can be removed normally
+yum -y remove alt-ruby31-rubygem-rack alt-ruby31-rubygem-rackup
