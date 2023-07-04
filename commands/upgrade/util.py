@@ -301,7 +301,7 @@ def format_actor_exceptions(logger):
             msg = "{} - Please check the above details".format(err.message)
             sys.stderr.write("\n")
             sys.stderr.write(pretty_block_text(msg, color="", width=len(msg)))
-            logger.error(e.message)
+            logger.error(err.message)
     finally:
         pass
 
