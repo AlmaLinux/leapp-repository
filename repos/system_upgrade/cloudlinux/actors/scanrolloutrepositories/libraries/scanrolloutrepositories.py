@@ -13,6 +13,17 @@ ROLLOUT_MARKER = 'rollout'
 CL_MARKERS = ['cloudlinux', 'imunify']
 
 
+def replace_releasever(lines):
+    return [line.replace("$releasever", "8") for line in lines]
+
+
+def modify_inplace(filepath):
+    with open(filepath, "r") as repo_f:
+        lines = replace_releasever(repo_f.readlines())
+    with open(filepath, "w") as repo_f:
+        repo_f.writelines(lines)
+
+
 def process():
     used_list = []
     for used_repos in api.consume(UsedRepositories):
@@ -26,6 +37,11 @@ def process():
         api.current_logger().debug("Detected a rollout repository file: {}".format(reponame))
 
         full_repo_path = os.path.join(REPO_DIR, reponame)
+
+        # On some systems, $releasever gets replaced by a string like "8.6", but we want specifically
+        # "8" for rollout repositories - URLs with "8.6" don't exist.
+        modify_inplace(full_repo_path)
+
         repofile = repofileutils.parse_repofile(full_repo_path)
 
         # Ignore the repositories that are enabled, but have no packages installed from them.
