@@ -12,7 +12,7 @@ CLSQL_BACKUP_FILES = [
 BACKUP_DIR = "/var/lib/leapp/cl_backup"
 
 
-def backup_file(source, destination, dir=None):
+def backup_file(source, destination, backup_directory=None):
     # type: (str, str, str) -> None
     """
     Backup file to a backup directory.
@@ -21,18 +21,18 @@ def backup_file(source, destination, dir=None):
     :param destination: Destination name of a file in the backup directory.
     :param dir: Backup directory override, defaults to None
     """
-    if not dir:
-        dir = BACKUP_DIR
-    if not os.path.isdir(dir):
-        os.makedirs(dir)
+    if not backup_directory:
+        backup_directory = BACKUP_DIR
+    if not os.path.isdir(backup_directory):
+        os.makedirs(backup_directory)
 
-    dest_path = os.path.join(dir, destination)
+    dest_path = os.path.join(backup_directory, destination)
 
     api.current_logger().debug('Backing up file: {} to {}'.format(source, dest_path))
     shutil.copy(source, dest_path)
 
 
-def restore_file(source, destination, dir=None):
+def restore_file(source, destination, backup_directory=None):
     # type: (str, str, str) -> None
     """
     Restore file from a backup directory.
@@ -41,9 +41,9 @@ def restore_file(source, destination, dir=None):
     :param destination: Destination path to restore the file to.
     :param dir: Backup directory override, defaults to None
     """
-    if not dir:
-        dir = BACKUP_DIR
-    src_path = os.path.join(dir, source)
+    if not backup_directory:
+        backup_directory = BACKUP_DIR
+    src_path = os.path.join(backup_directory, source)
 
     api.current_logger().debug('Restoring file: {} to {}'.format(src_path, destination))
     shutil.copy(src_path, destination)

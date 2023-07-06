@@ -12,33 +12,17 @@ from leapp.libraries.stdlib import api
 from leapp.libraries.common import repofileutils
 from leapp import reporting
 from leapp.libraries.common.clmysql import get_clmysql_type, get_pkg_prefix, MODULE_STREAMS
+from leapp.libraries.common.repositories import (
+    create_leapp_repofile_copy,
+    REPO_DIR,
+    LEAPP_COPY_SUFFIX,
+    REPOFILE_SUFFIX,
+)
 
-REPO_DIR = '/etc/yum.repos.d'
-TEMP_DIR = '/var/lib/leapp/yum_custom_repofiles'
-REPOFILE_SUFFIX = ".repo"
-LEAPP_COPY_SUFFIX = "_leapp_custom.repo"
 CL_MARKERS = ['cl-mysql', 'cl-mariadb', 'cl-percona']
 MARIA_MARKERS = ['MariaDB']
 MYSQL_MARKERS = ['mysql-community']
 OLD_MYSQL_VERSIONS = ['5.7', '5.6', '5.5']
-
-
-def produce_leapp_repofile_copy(repofile_data, repo_name):
-    """
-    Create a copy of an existing Yum repository config file, modified
-    to be used during the Leapp transaction.
-    It will be placed inside the isolated overlay environment Leapp runs the upgrade from.
-    """
-    if not os.path.isdir(TEMP_DIR):
-        os.makedirs(TEMP_DIR)
-    leapp_repofile = repo_name + LEAPP_COPY_SUFFIX
-    leapp_repo_path = os.path.join(TEMP_DIR, leapp_repofile)
-    if os.path.exists(leapp_repo_path):
-        os.unlink(leapp_repo_path)
-
-    api.current_logger().debug('Producing a Leapp repofile copy: {}'.format(leapp_repo_path))
-    repofileutils.save_repofile(repofile_data, leapp_repo_path)
-    api.produce(CustomTargetRepositoryFile(file=leapp_repo_path))
 
 
 def build_install_list(prefix):
@@ -109,7 +93,8 @@ def process():
 
             if any(repo.enabled for repo in repofile_data.data):
                 mysql_types.append('cloudlinux')
-                produce_leapp_repofile_copy(repofile_data, repofile_name)
+                leapp_repocopy = create_leapp_repofile_copy(repofile_data, repofile_name)
+                api.produce(CustomTargetRepositoryFile(file=leapp_repocopy))
             else:
                 api.current_logger().debug("No repos from CloudLinux repofile {} enabled, ignoring".format(
                         repofile_name
@@ -142,7 +127,8 @@ def process():
                 # Since MariaDB URLs have major versions written in, we need a new repo file
                 # to feed to the target userspace.
                 mysql_types.append('mariadb')
-                produce_leapp_repofile_copy(repofile_data, repofile_name)
+                leapp_repocopy = create_leapp_repofile_copy(repofile_data, repofile_name)
+                api.produce(CustomTargetRepositoryFile(file=leapp_repocopy))
             else:
                 api.current_logger().debug("No repos from MariaDB repofile {} enabled, ignoring".format(
                         repofile_name
@@ -192,7 +178,8 @@ def process():
 
             if any(repo.enabled for repo in repofile_data.data):
                 mysql_types.append('mysql')
-                produce_leapp_repofile_copy(repofile_data, repofile_name)
+                leapp_repocopy = create_leapp_repofile_copy(repofile_data, repofile_name)
+                api.produce(CustomTargetRepositoryFile(file=leapp_repocopy))
             else:
                 api.current_logger().debug("No repos from MySQL repofile {} enabled, ignoring".format(
                         repofile_name
