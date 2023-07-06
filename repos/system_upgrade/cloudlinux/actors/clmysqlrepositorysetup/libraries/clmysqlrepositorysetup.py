@@ -12,7 +12,7 @@ from leapp.libraries.stdlib import api
 from leapp.libraries.common import repofileutils
 from leapp import reporting
 from leapp.libraries.common.clmysql import get_clmysql_type, get_pkg_prefix, MODULE_STREAMS
-from leapp.libraries.common.repositories import (
+from leapp.libraries.common.cl_repofileutils import (
     create_leapp_repofile_copy,
     REPO_DIR,
     LEAPP_COPY_SUFFIX,

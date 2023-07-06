@@ -3,9 +3,6 @@ import os.path
 
 from leapp.libraries.stdlib import api
 from leapp.libraries.common import repofileutils
-from leapp.models import (
-    CustomTargetRepositoryFile,
-)
 
 ROLLOUT_MARKER = 'rollout'
 CL_MARKERS = ['cloudlinux', 'imunify']
