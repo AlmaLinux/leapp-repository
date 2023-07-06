@@ -1,0 +1,63 @@
+[imunify360-rollout-1]
+name=Imunify360 - Gradual Rollout Slot 1
+baseurl=https://download.imunify360.com/el/8/slot-1/x86_64/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-1-bypass]
+name=Imunify360 - Gradual Rollout Slot 1 Bypass
+baseurl=https://download.imunify360.com/el/8/slot-1-bypass/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-2]
+name=Imunify360 - Gradual Rollout Slot 2
+baseurl=https://download.imunify360.com/el/8/slot-2/x86_64/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-2-bypass]
+name=Imunify360 - Gradual Rollout Slot 2 Bypass
+baseurl=https://download.imunify360.com/el/8/slot-2-bypass/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-3]
+name=Imunify360 - Gradual Rollout Slot 3
+baseurl=https://download.imunify360.com/el/8/slot-3/x86_64/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-3-bypass]
+name=Imunify360 - Gradual Rollout Slot 3 Bypass
+baseurl=https://download.imunify360.com/el/8/slot-3-bypass/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-4]
+name=Imunify360 - Gradual Rollout Slot 4
+baseurl=https://download.imunify360.com/el/8/slot-4/x86_64/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
+
+[imunify360-rollout-4-bypass]
+name=Imunify360 - Gradual Rollout Slot 4 Bypass
+baseurl=https://download.imunify360.com/el/8/slot-4-bypass/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=https://repo.imunify360.cloudlinux.com/defense360/RPM-GPG-KEY-CloudLinux
+skip_if_unavailable=True
