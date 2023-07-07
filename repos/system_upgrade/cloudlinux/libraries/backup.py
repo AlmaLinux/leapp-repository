@@ -12,7 +12,7 @@ CLSQL_BACKUP_FILES = [
 BACKUP_DIR = "/var/lib/leapp/cl_backup"
 
 
-def backup_file(source, destination, backup_directory=None):
+def backup_file(source, destination, backup_directory=""):
     # type: (str, str, str) -> None
     """
     Backup file to a backup directory.
@@ -32,7 +32,7 @@ def backup_file(source, destination, backup_directory=None):
     shutil.copy(source, dest_path)
 
 
-def restore_file(source, destination, backup_directory=None):
+def restore_file(source, destination, backup_directory=""):
     # type: (str, str, str) -> None
     """
     Restore file from a backup directory.
