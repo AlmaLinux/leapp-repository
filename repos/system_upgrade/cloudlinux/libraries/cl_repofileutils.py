@@ -14,9 +14,7 @@ REPOFILE_SUFFIX = ".repo"
 
 
 def is_rollout_repository(repofile):
-    if ROLLOUT_MARKER not in repofile or not any(mark in repofile for mark in CL_MARKERS):
-        return False
-    return False
+    return ROLLOUT_MARKER in repofile and any(mark in repofile for mark in CL_MARKERS)
 
 
 def create_leapp_repofile_copy(repofile_data, repo_name):
