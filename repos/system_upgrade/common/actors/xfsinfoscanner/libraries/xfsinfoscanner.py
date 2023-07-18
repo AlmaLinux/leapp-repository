@@ -1,4 +1,4 @@
-from leapp.libraries.stdlib import api, run
+from leapp.libraries.stdlib import api, run, CalledProcessError
 from leapp.models import StorageInfo, XFSPresence
 
 
@@ -21,11 +21,18 @@ def scan_xfs_mount(data):
 
 
 def is_xfs_without_ftype(mp):
-    for l in run(['/usr/sbin/xfs_info', '{}'.format(mp)], split=True)['stdout']:
-        if 'ftype=0' in l:
-            return True
-
-    return False
+    try:
+        for l in run(['/usr/sbin/xfs_info', '{}'.format(mp)], split=True)['stdout']:
+            if 'ftype=0' in l:
+                return True
+        return False
+    # xfs_info can sometimes throw errors like the following if fed a CageFS mountpoint.
+    # xfs_info: /usr/share/cagefs-skeleton/var/www/cgi-bin\040(deleted) is not a mounted XFS filesystem
+    except CalledProcessError as err:
+        if "cagefs" in mp:
+            api.current_logger().info("CageFS XFS mountpoint {} ignored in scanner".format(mp))
+            return False
+        raise err
 
 
 def scan_xfs():
