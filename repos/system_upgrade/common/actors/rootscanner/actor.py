@@ -1,8 +1,7 @@
-import os
-
 from leapp.actors import Actor
-from leapp.models import RootDirectory, RootSubdirectory
-from leapp.tags import IPUWorkflowTag, FactsPhaseTag
+from leapp.libraries.actor.rootscanner import scan_dir
+from leapp.models import RootDirectory
+from leapp.tags import FactsPhaseTag, IPUWorkflowTag
 
 
 class RootScanner(Actor):
@@ -17,11 +16,4 @@ class RootScanner(Actor):
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
-        subdirs = []
-        for subdir in os.listdir('/'):
-            path = os.path.join('/', subdir)
-            if os.path.islink(path):
-                subdirs.append(RootSubdirectory(name=subdir, target=os.readlink(path)))
-            else:
-                subdirs.append(RootSubdirectory(name=subdir))
-        self.produce(RootDirectory(items=subdirs))
+        self.produce(scan_dir(b'/'))

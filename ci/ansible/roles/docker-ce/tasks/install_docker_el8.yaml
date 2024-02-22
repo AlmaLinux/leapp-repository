@@ -1,0 +1,11 @@
+---
+# Install Docker
+- name: Install Docker CE Stable
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    update_cache: yes
+    state: present

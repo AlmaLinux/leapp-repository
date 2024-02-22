@@ -1,10 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.exceptions import StopActorExecutionError
-from leapp.models import Report, PamConfiguration
-from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 from leapp.libraries.stdlib import api
+from leapp.models import PamConfiguration, Report
 from leapp.reporting import create_report
-from leapp import reporting
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
 class CheckRemovedPamModules(Actor):
@@ -12,7 +12,7 @@ class CheckRemovedPamModules(Actor):
     Check for modules that are not available in RHEL 8 anymore
 
     At this moment, we check only for pam_tally2. Few more modules
-    are alredy covered in RemoveOldPAMModulesApply actor
+    are already covered in RemoveOldPAMModulesApply actor
     """
 
     name = 'removed_pam_modules'
@@ -30,7 +30,7 @@ class CheckRemovedPamModules(Actor):
                 'Could not check pam configuration', details={'details': 'No PamConfiguration facts found.'}
             )
 
-        # This list contain tupples of removed modules and their recommended replacements
+        # This list contain tuples of removed modules and their recommended replacements
         removed_modules = [
             ('pam_tally2', 'pam_faillock'),
             ]
@@ -60,5 +60,5 @@ class CheckRemovedPamModules(Actor):
                          'under /etc/pam.d/.'.format(', '.join(replacements))
                 ),
                 reporting.Severity(reporting.Severity.HIGH),
-                reporting.Flags([reporting.Flags.INHIBITOR]),
+                reporting.Groups([reporting.Groups.INHIBITOR]),
             ] + [reporting.RelatedResource('pam', r) for r in replacements | found_modules])

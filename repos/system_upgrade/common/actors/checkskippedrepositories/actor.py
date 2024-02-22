@@ -1,8 +1,8 @@
-from leapp.actors import Actor
-from leapp.reporting import create_report
 from leapp import reporting
+from leapp.actors import Actor
 from leapp.libraries.stdlib import config
 from leapp.models import Report, SkippedRepositories
+from leapp.reporting import create_report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
@@ -43,7 +43,7 @@ class CheckSkippedRepositories(Actor):
                 reporting.Title(title),
                 reporting.Summary(summary),
                 reporting.Severity(reporting.Severity.LOW),
-                reporting.Tags([reporting.Tags.REPOSITORY]),
+                reporting.Groups([reporting.Groups.REPOSITORY]),
                 reporting.Remediation(
                     hint='You can file a request to add this repository to the scope of in-place upgrades '
                          'by filing a support ticket')

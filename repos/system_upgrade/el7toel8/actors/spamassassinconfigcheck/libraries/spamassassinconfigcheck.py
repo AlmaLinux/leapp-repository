@@ -1,6 +1,9 @@
 from leapp import reporting
-from leapp.libraries.common.spamassassinutils import \
-    SPAMC_CONFIG_FILE, SPAMASSASSIN_SERVICE_OVERRIDE, SYSCONFIG_SPAMASSASSIN
+from leapp.libraries.common.spamassassinutils import (
+    SPAMASSASSIN_SERVICE_OVERRIDE,
+    SPAMC_CONFIG_FILE,
+    SYSCONFIG_SPAMASSASSIN
+)
 
 
 def _check_spamc_config(facts, report_func):
@@ -26,7 +29,7 @@ def _check_spamc_config(facts, report_func):
     args = [
         reporting.Title(title),
         summary,
-        reporting.Tags([reporting.Tags.ENCRYPTION]),
+        reporting.Groups([reporting.Groups.ENCRYPTION]),
         reporting.Severity(severity),
         reporting.Remediation(hint=hint),
     ]
@@ -56,7 +59,7 @@ def _check_spamd_config_ssl(facts, report_func):
     args = [
         reporting.Title(title),
         summary,
-        reporting.Tags([reporting.Tags.ENCRYPTION, reporting.Tags.SERVICES]),
+        reporting.Groups([reporting.Groups.ENCRYPTION, reporting.Groups.SERVICES]),
         reporting.Severity(severity),
         reporting.Remediation(hint=hint)
     ]
@@ -69,7 +72,7 @@ def _check_spamd_config_service_type(facts, report_func):
     title = 'The type of the spamassassin systemd service has changed'
     summary_generic = 'The type of spamassassin.service has been changed from "forking" to "simple".'
     if facts.service_overriden:
-        summary_detail = 'However, the service appears to be overriden; no migration action will occur.'
+        summary_detail = 'However, the service appears to be overridden; no migration action will occur.'
         resource = reporting.RelatedResource('file', SPAMASSASSIN_SERVICE_OVERRIDE)
     else:
         summary_detail = 'The spamassassin sysconfig file will be updated.'
@@ -77,7 +80,7 @@ def _check_spamd_config_service_type(facts, report_func):
     report_func([
         reporting.Title(title),
         reporting.Summary('%s %s' % (summary_generic, summary_detail)),
-        reporting.Tags([reporting.Tags.SERVICES]),
+        reporting.Groups([reporting.Groups.SERVICES]),
         reporting.Severity(reporting.Severity.MEDIUM),
         resource
     ])

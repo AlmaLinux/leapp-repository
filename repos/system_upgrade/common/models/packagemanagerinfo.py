@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemInfoTopic
 
 
@@ -17,3 +17,10 @@ class PkgManagerInfo(Model):
     In case the value is empty string, it means the file exists but it is empty. In such a case the
     original configuration is obviously broken.
     """
+
+    configured_proxies = fields.List(fields.String(), default=[])
+    """
+    A sorted list of proxies present in yum and dnf configuration files.
+    """
+
+    enabled_plugins = fields.List(fields.String(), default=[])

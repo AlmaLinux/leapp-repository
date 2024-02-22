@@ -1,14 +1,14 @@
 import pytest
 
-from leapp.models import HybridImage
-from leapp.libraries.common.testutils import logger_mocked
 from leapp.libraries.actor import grubenvtofile
-from leapp.libraries.stdlib import CalledProcessError, api
+from leapp.libraries.common.testutils import logger_mocked
+from leapp.libraries.stdlib import api, CalledProcessError
+from leapp.models import HybridImage
 
 
 def raise_call_error(args=None):
     raise CalledProcessError(
-        message='A Leapp Command Error occured.',
+        message='A Leapp Command Error occurred.',
         command=args,
         result={'signal': None, 'exit_code': 1, 'pid': 0, 'stdout': 'fake', 'stderr': 'fake'}
     )

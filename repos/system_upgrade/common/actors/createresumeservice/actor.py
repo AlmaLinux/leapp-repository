@@ -1,11 +1,12 @@
-import shutil
 import os
+import shutil
 
-from leapp.exceptions import StopActorExecutionError
-from leapp.actors import Actor
-from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
-from leapp.reporting import Report, create_report
 from leapp import reporting
+from leapp.actors import Actor
+from leapp.exceptions import StopActorExecutionError
+from leapp.libraries.stdlib import api
+from leapp.reporting import create_report, Report
+from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
 
 
 class CreateSystemdResumeService(Actor):
@@ -36,6 +37,12 @@ class CreateSystemdResumeService(Actor):
         except OSError:
             pass
 
+        if os.path.exists(symlink_path):
+            api.current_logger().debug(
+                'Symlink {} already exists (from previous upgrade?). Removing... '.format(symlink_path)
+            )
+            os.unlink(symlink_path)
+
         try:
             os.symlink(service_path, symlink_path)
         except OSError as e:
@@ -50,7 +57,7 @@ class CreateSystemdResumeService(Actor):
                 'after reboot.'.format(service_name)
             ),
             reporting.Severity(reporting.Severity.INFO),
-            reporting.Tags([reporting.Tags.UPGRADE_PROCESS]),
+            reporting.Groups([reporting.Groups.UPGRADE_PROCESS]),
             reporting.RelatedResource('file', service_path),
             reporting.RelatedResource('file', symlink_path),
             reporting.RelatedResource('service', service_name)

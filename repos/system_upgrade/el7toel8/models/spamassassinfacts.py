@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemInfoTopic
 
 
@@ -19,5 +19,5 @@ class SpamassassinFacts(Model):
 
     service_overriden = fields.Boolean()
     """
-    True if spamassassin.service is overriden, else False.
+    True if spamassassin.service is overridden, else False.
     """

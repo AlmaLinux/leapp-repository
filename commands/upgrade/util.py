@@ -27,8 +27,8 @@ def disable_database_sync():
     def disable_db_sync_decorator(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            saved = os.environ.get('LEAPP_DEVEL_DATABASE_SYNC_OFF', None)
             try:
-                saved = os.environ.get('LEAPP_DEVEL_DATABASE_SYNC_OFF', None)
                 os.environ['LEAPP_DEVEL_DATABASE_SYNC_OFF'] = '1'
                 return f(*args, **kwargs)
             finally:
@@ -151,8 +151,8 @@ def generate_report_files(context, report_schema):
                                             'leapp-report.{}'.format(f)) for f in ['txt', 'json']]
     # fetch all report messages as a list of dicts
     messages = fetch_upgrade_report_messages(context)
-    generate_report_file(messages, context, report_json, report_schema)
     generate_report_file(messages, context, report_txt, report_schema)
+    generate_report_file(messages, context, report_json, report_schema)
 
 
 def get_cfg_files(section, cfg, must_exist=True):
@@ -238,11 +238,28 @@ def prepare_configuration(args):
         os.environ['LEAPP_NO_RHSM'] = '1'
     elif os.getenv('LEAPP_NO_RHSM') != '1':
         os.environ['LEAPP_NO_RHSM'] = os.getenv('LEAPP_DEVEL_SKIP_RHSM', '0')
+
+    if args.no_insights_register:
+        os.environ['LEAPP_NO_INSIGHTS_REGISTER'] = '1'
+
     if args.enablerepo:
         os.environ['LEAPP_ENABLE_REPOS'] = ','.join(args.enablerepo)
 
+    if os.environ.get('LEAPP_NO_RHSM', '0') == '1' or args.no_rhsm_facts:
+        os.environ['LEAPP_NO_RHSM_FACTS'] = '1'
+
     if args.channel:
         os.environ['LEAPP_TARGET_PRODUCT_CHANNEL'] = args.channel
+
+    if args.iso:
+        os.environ['LEAPP_TARGET_ISO'] = args.iso
+    target_iso_path = os.environ.get('LEAPP_TARGET_ISO')
+    if target_iso_path:
+        # Make sure we convert rel paths into abs ones while we know what CWD is
+        os.environ['LEAPP_TARGET_ISO'] = os.path.abspath(target_iso_path)
+
+    if args.nogpgcheck:
+        os.environ['LEAPP_NOGPGCHECK'] = '1'
 
     # Check upgrade path and fail early if it's unsupported
     target_version, flavor = command_utils.vet_upgrade_path(args)
@@ -273,14 +290,6 @@ def process_whitelist_experimental(repositories, workflow, configuration, logger
             if logger:
                 logger.error(msg)
             raise CommandError(msg)
-
-
-def process_report_schema(args, configuration):
-    default_report_schema = configuration.get('report', 'schema')
-    if args.report_schema and args.report_schema > default_report_schema:
-        raise CommandError('--report-schema version can not be greater that the '
-                           'actual {} one.'.format(default_report_schema))
-    return args.report_schema or default_report_schema
 
 
 # TODO: This and the following functions should eventually be placed into the

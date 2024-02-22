@@ -5,7 +5,7 @@
 from os.path import isfile
 
 from leapp.libraries.actor import sctpdlm
-from leapp.libraries.stdlib import CalledProcessError, api, run
+from leapp.libraries.stdlib import api, CalledProcessError, run
 from leapp.models import ActiveKernelModulesFacts
 
 
@@ -88,7 +88,7 @@ def was_sctp_used():
 
 def is_sctp_wanted():
     """
-    Decision making funtion that decides based on the current or past usage of SCTP, the SCTP module is wanted
+    Decision making function that decides based on the current or past usage of SCTP, the SCTP module is wanted
     on the new system.
 
     :return: True if SCTP seems to be in use or has been recently used.

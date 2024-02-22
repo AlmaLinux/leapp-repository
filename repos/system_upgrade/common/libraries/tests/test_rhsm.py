@@ -1,18 +1,15 @@
-from collections import namedtuple
 import os
+from collections import namedtuple
 
 import pytest
 
 from leapp import reporting
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import repofileutils, rhsm
-from leapp.libraries.common.testutils import (
-    create_report_mocked,
-    CurrentActorMocked,
-    logger_mocked
-)
-from leapp.libraries.stdlib import CalledProcessError, api
-from leapp.models import RepositoryFile, RepositoryData
+from leapp.libraries.common.testutils import create_report_mocked, CurrentActorMocked, logger_mocked
+from leapp.libraries.stdlib import api, CalledProcessError
+from leapp.models import RepositoryData, RepositoryFile
+from leapp.utils.report import is_inhibitor
 
 Repository = namedtuple('Repository', ['repoid', 'file'])
 LIST_SEPARATOR = '\n    - '
@@ -187,7 +184,7 @@ def test_inhibit_on_duplicate_repos(monkeypatch):
     assert ('The following repoids are defined multiple times:{0}{1}'
             .format(LIST_SEPARATOR, LIST_SEPARATOR.join(dups))) in api.current_logger.warnmsg
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['title'] == 'A YUM/DNF repository defined multiple times'
     summary = ('The following repositories are defined multiple times:{0}{1}'
                .format(LIST_SEPARATOR, LIST_SEPARATOR.join(dups)))
@@ -247,7 +244,7 @@ def test_get_release(monkeypatch, actor_mocked, context_mocked):
 
 def test_get_release_with_release_not_set(monkeypatch, actor_mocked, context_mocked):
     """Tests whether the library does not retrieve release information when the release is not set."""
-    # Test whether no realease is detected correctly too
+    # Test whether no release is detected correctly too
     context_mocked.add_mocked_command_call_with_stdout(CMD_RHSM_RELEASE, 'Release not set')
 
     release = rhsm.get_release(context_mocked)

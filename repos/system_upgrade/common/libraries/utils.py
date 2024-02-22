@@ -57,7 +57,7 @@ def makedirs(path, mode=0o777, exists_ok=True):
 
 @deprecated(since='2022-02-03', message=(
         'The "apply_yum_workaround" function has been deprecated, use "DNFWorkaround" '
-        'message as used in the successing "RegisterYumAdjustment" actor.'
+        'message as used in the successive "RegisterYumAdjustment" actor.'
     )
 )
 def apply_yum_workaround(context=None):
@@ -77,7 +77,7 @@ def apply_yum_workaround(context=None):
         context.call(cmd)
     except OSError as e:
         raise StopActorExecutionError(
-            message='Failed to exceute script to apply yum adjustment. Message: {}'.format(str(e))
+            message='Failed to execute script to apply yum adjustment. Message: {}'.format(str(e))
         )
     except CalledProcessError as e:
         raise StopActorExecutionError(
@@ -168,7 +168,7 @@ def clean_guard(cleanup_function):
                 try:
                     cleanup_function(*args, **kwargs)
                 except Exception:  # pylint: disable=broad-except
-                    # Broad exception handler to handle all cases however, swallowed, to avoid loosing the original
+                    # Broad exception handler to handle all cases however, swallowed, to avoid losing the original
                     # error. Logging for debuggability.
                     api.current_logger().warning('Caught and swallowed an exception during cleanup.', exc_info=True)
                 raise  # rethrow original exception
@@ -184,3 +184,67 @@ def read_file(path):
     """
     with open(path, 'r') as f:
         return f.read()
+
+
+def _require_exactly_one_message_of_type(model_class, error_callback=None):
+    """
+    Consume and return exactly one message of the given type, error if there are none or more than one available.
+
+    Calls ``error_callback`` if there are none or more than one messages available of the requested type
+    with a string describing the error condition.
+
+    Note: this function is private, experimental and will likely be subject to change.
+
+    :param model_class: Message type to consume
+    :param Callable[[str], None] error_callback: Callback to call when error condition arises, e.g., raising the
+                                                 StopActorExecutionError (default).
+    """
+    def default_callback(msg):
+        raise StopActorExecutionError(msg)
+
+    if not error_callback:
+        error_callback = default_callback
+
+    model_instances = api.consume(model_class)
+    model_instance = next(model_instances, None)
+    if not model_instance:
+        msg = 'Exactly one {cls_name} message of type is required, however, none was received.'
+        msg = msg.format(cls_name=model_class.__name__)
+        error_callback(msg)
+
+    next_instance = next(model_instances, None)
+    if next_instance:
+        msg = 'Exactly one {cls_name} message is required, however, more than one messages were received.'
+        msg = msg.format(cls_name=model_class.__name__)
+        error_callback(msg)
+
+    return model_instance
+
+
+def _require_some_message_of_type(model_class, error_callback=None):
+    """
+    Consume and return one message of the given type, error if there are no messages available.
+
+    Calls ``error_callback`` if there are no messages available of the requested type
+    with a string describing the error condition.
+
+    Note: this function is private, experimental and will likely be subject to change.
+
+    :param model_class: Message type to consume
+    :param Callable[[str], None] error_callback: Callback to call when error condition arises, e.g., raising the
+                                                 StopActorExecutionError (default).
+    """
+    def default_callback(msg):
+        raise StopActorExecutionError(msg)
+
+    if not error_callback:
+        error_callback = default_callback
+
+    model_instances = api.consume(model_class)
+    model_instance = next(model_instances, None)
+    if not model_instance:
+        msg = 'Exactly one {cls_name} message of type is required, however, none was received.'
+        msg = msg.format(cls_name=model_class.__name__)
+        error_callback(msg)
+
+    return model_instance

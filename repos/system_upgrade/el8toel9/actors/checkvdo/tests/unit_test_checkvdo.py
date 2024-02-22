@@ -10,16 +10,19 @@ from leapp.models import (
     VdoConversionPreDevice,
     VdoConversionUndeterminedDevice
 )
+from leapp.utils.report import is_inhibitor
 
 
-class MockedActorNoVdoDevices(CurrentActorMocked):
-    def get_no_vdo_devices_response(self):
-        return True
-
-
-class MockedActorSomeVdoDevices(CurrentActorMocked):
-    def get_no_vdo_devices_response(self):
+# Mock actor base for CheckVdo tests.
+class MockedActorCheckVdo(CurrentActorMocked):
+    def get_vdo_answer(self):
         return False
+
+
+# Mock actor for all_vdo_converted dialog response.
+class MockedActorAllVdoConvertedTrue(MockedActorCheckVdo):
+    def get_vdo_answer(self):
+        return True
 
 
 def aslist(f):
@@ -65,6 +68,7 @@ def _undetermined_conversion_vdos(count=0, failing=False, start_char='a'):
 
 # No VDOs tests.
 def test_no_vdos(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
@@ -75,6 +79,7 @@ def test_no_vdos(monkeypatch):
 
 # Concurrent pre- and post-conversion tests.
 def test_both_conversion_vdo_incomplete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     post_count = 7
     checkvdo.check_vdo(
@@ -83,22 +88,24 @@ def test_both_conversion_vdo_incomplete(monkeypatch):
             pre_conversion=_pre_conversion_vdos(3, start_char=chr(ord('a') + post_count)),
             undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 2
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
 
 
 # Post-conversion tests.
 def test_post_conversion_multiple_vdo_incomplete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(7, 5),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith('VDO devices')
 
 
 def test_post_conversion_multiple_vdo_complete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(7, 7),
@@ -108,25 +115,27 @@ def test_post_conversion_multiple_vdo_complete(monkeypatch):
 
 
 def test_post_conversion_single_vdo_incomplete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(1),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert (reporting.create_report.report_fields['summary'].startswith('VDO device')
             and (not reporting.create_report.report_fields['summary'].startswith('VDO devices')))
 
 
 def test_post_conversion_single_check_failing(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(2, complete=1, failing=1),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert (reporting.create_report.report_fields['summary'].startswith(
             'Unexpected result checking device') and
             (not reporting.create_report.report_fields['summary'].startswith(
@@ -134,60 +143,65 @@ def test_post_conversion_single_check_failing(monkeypatch):
 
 
 def test_post_conversion_multiple_check_failing(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(7, complete=4, failing=3),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith(
             'Unexpected result checking devices')
 
 
 def test_post_conversion_incomplete_and_check_failing(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(2, failing=1),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 2
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
 
 
 # Pre-conversion tests.
 def test_pre_conversion_multiple_vdo_incomplete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(7),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith('VDO devices')
 
 
 def test_pre_conversion_single_vdo_incomplete(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(1),
                           undetermined_conversion=_undetermined_conversion_vdos()))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert (reporting.create_report.report_fields['summary'].startswith('VDO device')
             and (not reporting.create_report.report_fields['summary'].startswith('VDO devices')))
 
 
 # Undetermined tests.
 def test_undetermined_single_check_failing(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos(1, True)))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert (reporting.create_report.report_fields['summary'].startswith(
             'Unexpected result checking device') and
             (not reporting.create_report.report_fields['summary'].startswith(
@@ -195,38 +209,41 @@ def test_undetermined_single_check_failing(monkeypatch):
 
 
 def test_undetermined_multiple_check_failing(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos(3, failing=True)))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith(
             'Unexpected result checking devices')
 
 
-def test_undetermined_multiple_no_check_no_vdos(monkeypatch):
-    monkeypatch.setattr(api, 'current_actor', MockedActorNoVdoDevices())
+def test_undetermined_multiple_no_check(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorCheckVdo())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos(3)))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' not in reporting.create_report.report_fields['flags']
+    assert is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith(
-            'User has asserted there are no VDO devices')
+            'The check of block devices could not be performed as the \'vdo\' '
+            'package is not installed.')
 
 
-def test_undetermined_multiple_no_check_some_vdos(monkeypatch):
-    monkeypatch.setattr(api, 'current_actor', MockedActorSomeVdoDevices())
+# all_vdo_converted test.
+def test_all_vdo_converted_true(monkeypatch):
+    monkeypatch.setattr(api, 'current_actor', MockedActorAllVdoConvertedTrue())
     monkeypatch.setattr(reporting, 'create_report', create_report_mocked())
     checkvdo.check_vdo(
         VdoConversionInfo(post_conversion=_post_conversion_vdos(),
                           pre_conversion=_pre_conversion_vdos(),
                           undetermined_conversion=_undetermined_conversion_vdos(3)))
     assert reporting.create_report.called == 1
-    assert 'inhibitor' in reporting.create_report.report_fields['flags']
+    assert not is_inhibitor(reporting.create_report.report_fields)
     assert reporting.create_report.report_fields['summary'].startswith(
-            'User has opted to inhibit upgrade')
+            'User has asserted all VDO devices on the system have been successfully converted')

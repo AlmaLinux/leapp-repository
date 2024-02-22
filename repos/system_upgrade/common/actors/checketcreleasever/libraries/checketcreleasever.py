@@ -1,7 +1,7 @@
 from leapp import reporting
-from leapp.models import PkgManagerInfo, RHUIInfo
 from leapp.libraries.stdlib import api
 from leapp.libraries.common.config.version import get_target_major_version
+from leapp.models import PkgManagerInfo, RHUIInfo
 
 
 def handle_etc_releasever():
@@ -15,12 +15,11 @@ def handle_etc_releasever():
             'On this system, Leapp detected "releasever" variable is either configured through DNF/YUM configuration '
             'file and/or the system is using RHUI infrastructure. In order to avoid issues with repofile URLs '
             '(when --release option is not provided) in cases where there is the previous major.minor version value '
-            'in the configuration, release version will be set to the major target release version ({}).'.format(
-                target_version
-            )
+            'in the configuration, release version will be set to the target release version ({}). This will also '
+            'ensure the system stays on the expected target version after the upgrade'.format(target_version)
         ),
         reporting.Severity(reporting.Severity.INFO),
-        reporting.Tags([reporting.Tags.UPGRADE_PROCESS]),
+        reporting.Groups([reporting.Groups.UPGRADE_PROCESS]),
     ])
 
 

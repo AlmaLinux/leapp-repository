@@ -1,34 +1,40 @@
 ﻿import json
 from collections import defaultdict
 
+from leapp.libraries.stdlib import api
 from leapp.exceptions import StopActorExecutionError
-from leapp.libraries.common.fetch import read_or_fetch
+from leapp.libraries.common.fetch import load_data_asset
 from leapp.models import PESIDRepositoryEntry, RepoMapEntry
 
 
 def inhibit_upgrade(msg):
-    raise StopActorExecutionError(
-        msg,
-        details={'hint': ('Read documentation at the following link for more'
-                          ' information about how to retrieve the valid file:'
-                          ' https://access.redhat.com/articles/3664871')})
-
+    rpmname = 'leapp-upgrade-el{}toel{}'.format(get_source_major_version(), get_target_major_version())
+    hint = (
+        'All official data files are nowadays part of the installed rpms.'
+        ' This issue is usually encountered when the data files are incorrectly customized, replaced, or removed'
+        ' (e.g. by custom scripts).'
+        ' In case you want to recover the original file, remove it (if still exists)'
+        ' and reinstall the {} rpm.'
+        .format(rpmname)
+    )
+    raise StopActorExecutionError(msg, details={'hint': hint})
 
 def read_repofile(repofile, directory="/etc/leapp/files"):
     # NOTE: what about catch StopActorExecution error when the file cannot be
     # obtained -> then check whether old_repomap file exists and in such a case
     # inform user they have to provde the new repomap.json file (we have the
     # warning now only which could be potentially overlooked)
-    try:
-        return json.loads(read_or_fetch(repofile, directory))
-    except ValueError:
-        # The data does not contain a valid json
-        inhibit_upgrade('The repository mapping file is invalid: file does not contain a valid JSON object.')
-    return None  # Avoids inconsistent-return-statements warning
+    repofile_data = load_data_asset(api.current_actor(),
+                                    repofile,
+                                    asset_fulltext_name='Repositories mapping',
+                                    asset_directory=directory,
+                                    docs_url='',
+                                    docs_title='')
+    return repofile_data  # If the file does not contain a valid json then load_asset will do a stop actor execution
 
 
 class RepoMapData(object):
-    VERSION_FORMAT = '1.0.0'
+    VERSION_FORMAT = '1.2.0'
 
     def __init__(self):
         self.repositories = []

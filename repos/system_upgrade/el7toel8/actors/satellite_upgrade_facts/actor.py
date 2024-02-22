@@ -1,6 +1,7 @@
 import os
 
 from leapp.actors import Actor
+from leapp.libraries.common.config import architecture
 from leapp.libraries.common.rpms import has_package
 from leapp.libraries.stdlib import run
 from leapp.models import (
@@ -28,9 +29,14 @@ class SatelliteUpgradeFacts(Actor):
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
+        if not architecture.matches_architecture(architecture.ARCH_X86_64):
+            return
+
         has_foreman = has_package(InstalledRPM, 'foreman') or has_package(InstalledRPM, 'foreman-proxy')
         if not has_foreman:
             return
+
+        has_katello_installer = has_package(InstalledRPM, 'foreman-installer-katello')
 
         local_postgresql = has_package(InstalledRPM, 'rh-postgresql12-postgresql-server')
         postgresql_contrib = has_package(InstalledRPM, 'rh-postgresql12-postgresql-contrib')
@@ -74,7 +80,7 @@ class SatelliteUpgradeFacts(Actor):
             Handle migration of the PostgreSQL legacy-actions files.
             RPM cannot handle replacement of directories by symlinks by default
             without the %pretrans scriptlet. As PostgreSQL package is packaged wrong,
-            we have to workround that by migration of the PostgreSQL files
+            we have to workaround that by migration of the PostgreSQL files
             before the rpm transaction is processed.
             """
             self.produce(
@@ -114,6 +120,7 @@ class SatelliteUpgradeFacts(Actor):
 
         self.produce(SatelliteFacts(
             has_foreman=has_foreman,
+            has_katello_installer=has_katello_installer,
             postgresql=SatellitePostgresqlFacts(
                 local_postgresql=local_postgresql,
                 old_var_lib_pgsql_data=old_pgsql_data,
@@ -123,16 +130,20 @@ class SatelliteUpgradeFacts(Actor):
             ),
         ))
 
+        repositories_to_enable = ['satellite-maintenance-6.11-for-rhel-8-x86_64-rpms']
+        if has_package(InstalledRPM, 'satellite'):
+            repositories_to_enable.append('satellite-6.11-for-rhel-8-x86_64-rpms')
+            modules_to_enable.append(Module(name='satellite', stream='el8'))
+            to_install.append('satellite')
+        elif has_package(InstalledRPM, 'satellite-capsule'):
+            repositories_to_enable.append('satellite-capsule-6.11-for-rhel-8-x86_64-rpms')
+            modules_to_enable.append(Module(name='satellite-capsule', stream='el8'))
+            to_install.append('satellite-capsule')
+
         self.produce(RpmTransactionTasks(
             to_remove=to_remove,
             to_install=to_install,
             modules_to_enable=modules_to_enable
             )
         )
-        repositories_to_enable = ['ansible-2.9-for-rhel-8-x86_64-rpms',
-                                  'satellite-maintenance-6.11-for-rhel-8-x86_64-rpms']
-        if has_package(InstalledRPM, 'foreman'):
-            repositories_to_enable.append('satellite-6.11-for-rhel-8-x86_64-rpms')
-        else:
-            repositories_to_enable.append('satellite-capsule-6.11-for-rhel-8-x86_64-rpms')
         self.produce(RepositoriesSetupTasks(to_enable=repositories_to_enable))

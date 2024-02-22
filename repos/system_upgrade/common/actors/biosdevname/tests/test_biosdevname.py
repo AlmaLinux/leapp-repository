@@ -1,7 +1,7 @@
-from mock import mock_open, patch
 import pytest
 import pyudev
 import six
+from mock import mock_open, patch
 
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.actor import biosdevname
@@ -112,7 +112,7 @@ def test_enable_biosdevname(monkeypatch):
 
     biosdevname.enable_biosdevname()
     assert (
-        "Biosdevname naming scheme in use, explicitely enabling biosdevname on the target RHEL system"
+        "Biosdevname naming scheme in use, explicitly enabling biosdevname on the target RHEL system"
         in api.current_logger.infomsg
     )
     assert result[0].key == "biosdevname"

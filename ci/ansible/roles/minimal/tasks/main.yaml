@@ -1,0 +1,21 @@
+---
+# tasks file for minimal
+- name: Upgrade the packages on EL7
+  ansible.builtin.include_tasks: upgrade_el7.yaml
+  when: ansible_facts['distribution_major_version'] == '7'
+
+- name: Upgrade the packages on EL8
+  ansible.builtin.include_tasks: upgrade_el8.yaml
+  when: ansible_facts['distribution_major_version'] == '8'
+
+- name: Reboot the system
+  ansible.builtin.reboot:
+  when: upgrade_status is changed
+
+- name: Cleanup the older kernels on EL7
+  ansible.builtin.include_tasks: cleanup_el7.yaml
+  when: ansible_facts['distribution_major_version'] == '7'
+
+- name: Cleanup the older kernels on El8
+  ansible.builtin.include_tasks: cleanup_el8.yaml
+  when: ansible_facts['distribution_major_version'] == '8'

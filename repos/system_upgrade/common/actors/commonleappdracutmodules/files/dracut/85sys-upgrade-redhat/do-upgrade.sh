@@ -8,7 +8,8 @@ fi
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
 get_rhel_major_release() {
-    local os_version=$(cat /etc/initrd-release | grep -o '^VERSION="[0-9][0-9]*' | grep -o '[0-9]*')
+    local os_version
+    os_version=$(grep -o '^VERSION="[0-9][0-9]*' /etc/initrd-release | grep -o '[0-9]*')
     [ -z "$os_version" ] && {
         # This should not happen as /etc/initrd-release is supposed to have API
         # stability, but check is better than broken system.
@@ -22,7 +23,8 @@ get_rhel_major_release() {
     echo "$os_version"
 }
 
-export RHEL_OS_MAJOR_RELEASE=$(get_rhel_major_release)
+RHEL_OS_MAJOR_RELEASE=$(get_rhel_major_release)
+export RHEL_OS_MAJOR_RELEASE
 export LEAPPBIN=/usr/bin/leapp
 export LEAPPHOME=/root/tmp_leapp_py3
 export LEAPP3_BIN=$LEAPPHOME/leapp3
@@ -44,8 +46,10 @@ fi
 export NSPAWN_OPTS="$NSPAWN_OPTS --keep-unit --register=no --timezone=off --resolv-conf=off"
 
 
+export LEAPP_FAILED_FLAG_FILE="/root/tmp_leapp_py3/.leapp_upgrade_failed"
+
 #
-# Temp for collecting and preparing tarbal
+# Temp for collecting and preparing tarball
 #
 LEAPP_DEBUG_TMP="/tmp/leapp-debug-root"
 
@@ -133,7 +137,7 @@ ibdmp() {
     #   3. decorate each chunk with prefix `N:` where
     #      N is number of given chunk.
     #
-    #   4. Finally print all lines (pre-pended "header"
+    #   4. Finally print all lines (prepended "header"
     #      line and all chunks) several times, where
     #      every iteration should be prefixed by
     #      `_ibdmp:I/TTL|` and suffixed by `|`.
@@ -192,6 +196,18 @@ ibdmp() {
     done
 }
 
+bring_up_network() {
+    if [ -f /etc/leapp-initram-network-manager ]; then
+        . /lib/dracut/hooks/cmdline/99-nm-config.sh
+        . /lib/dracut/hooks/initqueue/settled/99-nm-run.sh
+    fi
+    if [ -f /etc/leapp-initram-network-scripts ]; then
+        for interface in /sys/class/net/*;
+        do
+            ifup ${interface##*/};
+        done;
+    fi
+}
 
 do_upgrade() {
     local args="" rv=0
@@ -199,6 +215,8 @@ do_upgrade() {
     #getargbool 0 rd.upgrade.test && args="$args --testing"
     #getargbool 0 rd.upgrade.verbose && args="$args --verbose"
     getargbool 0 rd.upgrade.debug && args="$args --debug"
+
+    bring_up_network
 
     # Force selinux into permissive mode unless booted with 'enforcing=1'.
     # FIXME: THIS IS A BIG STUPID HAMMER AND WE SHOULD ACTUALLY SOLVE THE ROOT
@@ -213,7 +231,7 @@ do_upgrade() {
     # NOTE: in case we would need to run leapp before pivot, we would need to
     #       specify where the root is, e.g. --root=/sysroot
     # TODO: update: systemd-nspawn
-    /usr/bin/systemd-nspawn $NSPAWN_OPTS -D $NEWROOT /usr/bin/bash -c "mount -a; $LEAPPBIN upgrade --resume $args"
+    /usr/bin/systemd-nspawn $NSPAWN_OPTS -D "$NEWROOT" /usr/bin/bash -c "mount -a; $LEAPPBIN upgrade --resume $args"
     rv=$?
 
     # NOTE: flush the cached content to disk to ensure everything is written
@@ -228,14 +246,37 @@ do_upgrade() {
         #PY_LEAPP_PATH=/usr/lib/python2.7/site-packages/leapp/
         #$NEWROOT/bin/systemd-nspawn $NSPAWN_OPTS -D $NEWROOT -E PYTHONPATH="${PYTHONPATH}:${PY_LEAPP_PATH}" /usr/bin/python3 $LEAPPBIN upgrade --resume $args
 
+        # on aarch64 systems during el8 to el9 upgrades the swap is broken due to change in page size (64K to 4k)
+        # adjust the page size before booting into the new system, as it is possible the swap is necessary for to boot
+        # `arch` command is not available in the dracut shell, using uname -m instead
+        [ "$(uname -m)" = "aarch64" ] && [ "$RHEL_OS_MAJOR_RELEASE" = "9" ] && {
+            cp -aS ".leapp_bp" $NEWROOT/etc/fstab /etc/fstab
+            # swapon internally uses mkswap and both swapon and mkswap aren't available in dracut shell
+            # as a workaround we can use the one from $NEWROOT in $NEWROOT/usr/sbin
+            # for swapon to find mkswap we must temporarily adjust the PATH
+            # NOTE: we want to continue the upgrade even when the swapon command fails as users can fix it
+            # manually later. It's not a major blocker.
+            PATH="$PATH:${NEWROOT}/usr/sbin/" swapon -af || echo >&2 "Error: Failed fixing the swap page size. Manual action is required after the upgrade."
+            mv /etc/fstab.leapp_bp /etc/fstab
+        }
+
         # NOTE:
         # mount everything from FSTAB before run of the leapp as mount inside
         # the container is not persistent and we need to have mounted /boot
         # all FSTAB partitions. As mount was working before, hopefully will
         # work now as well. Later this should be probably modified as we will
         # need to handle more stuff around storage at all.
-        /usr/bin/systemd-nspawn $NSPAWN_OPTS -D $NEWROOT /usr/bin/bash -c "mount -a; /usr/bin/python3 $LEAPP3_BIN upgrade --resume $args"
+        /usr/bin/systemd-nspawn $NSPAWN_OPTS -D "$NEWROOT" /usr/bin/bash -c "mount -a; /usr/bin/python3 -B $LEAPP3_BIN upgrade --resume $args"
         rv=$?
+    fi
+
+    if [ "$rv" -ne 0 ]; then
+        # set the upgrade failed flag to prevent the upgrade from running again
+        # when the emergency shell exits and the upgrade.target is restarted
+        local dirname
+        dirname="$("$NEWROOT/bin/dirname" "$NEWROOT$LEAPP_FAILED_FLAG_FILE")"
+        [ -d "$dirname" ] || mkdir "$dirname"
+        "$NEWROOT/bin/touch" "$NEWROOT$LEAPP_FAILED_FLAG_FILE"
     fi
 
     # Dump debug data in case something went wrong
@@ -252,7 +293,7 @@ do_upgrade() {
 
     # restore things twiddled by workarounds above. TODO: remove!
     if [ -f /sys/fs/selinux/enforce ]; then
-        echo $enforce > /sys/fs/selinux/enforce
+        echo "$enforce" > /sys/fs/selinux/enforce
     fi
     return $rv
 }
@@ -264,7 +305,7 @@ save_journal() {
     local logfile="/sysroot/tmp-leapp-upgrade.log"
 
     # Create logfile if it doesn't exist
-    [ -n $logfile ] && > $logfile
+    [ -n "$logfile" ] && true > $logfile
 
     # If file exists save the journal
     if [ -e $logfile ]; then
@@ -279,7 +320,7 @@ save_journal() {
         local store_cmd="mount -a"
         local store_cmd="$store_cmd; cat /tmp-leapp-upgrade.log >> /var/log/leapp/leapp-upgrade.log"
 
-        /usr/bin/systemd-nspawn $NSPAWN_OPTS -D $NEWROOT /usr/bin/bash -c "$store_cmd"
+        /usr/bin/systemd-nspawn $NSPAWN_OPTS -D "$NEWROOT" /usr/bin/bash -c "$store_cmd"
 
         rm -f $logfile
     fi
@@ -291,6 +332,7 @@ save_journal() {
 # FIXME: obviously this is still wrong solution, but resolve that later, OK?
 old_opts=""
 declare mount_id parent_id major_minor root mount_point options rest
+# shellcheck disable=SC2034  # Unused variables left for readability
 while read -r mount_id parent_id major_minor root mount_point options \
         rest ; do
     if [ "$mount_point" = "$NEWROOT" ]; then
@@ -303,10 +345,19 @@ if [ -z "$old_opts" ]; then
 fi
 
 # enable read/write $NEWROOT
-mount -o "remount,rw" $NEWROOT
+mount -o "remount,rw" "$NEWROOT"
 
 ##### do the upgrade #######
 (
+    # check if leapp previously failed in the initramfs, if it did return to the emergency shell
+    [ -f "$NEWROOT$LEAPP_FAILED_FLAG_FILE" ] && {
+        echo >&2 "Found file $NEWROOT$LEAPP_FAILED_FLAG_FILE"
+        echo >&2 "Error: Leapp previously failed and cannot continue, returning back to emergency shell"
+        echo >&2 "Please file a support case with $NEWROOT/var/log/leapp/leapp-upgrade.log attached"
+        echo >&2 "To rerun the upgrade upon exiting the dracut shell remove the $NEWROOT$LEAPP_FAILED_FLAG_FILE file"
+        exit 1
+    }
+
     [ ! -x "$NEWROOT$LEAPPBIN" ] && {
         warn "upgrade binary '$LEAPPBIN' missing!"
         exit 1
@@ -324,5 +375,5 @@ getarg 'rd.break=leapp-logs' && emergency_shell -n upgrade "Break after LEAPP sa
 
 # NOTE: flush the cached content to disk to ensure everything is written
 sync
-mount -o "remount,$old_opts" $NEWROOT
+mount -o "remount,$old_opts" "$NEWROOT"
 exit $result

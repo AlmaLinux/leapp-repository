@@ -4,6 +4,7 @@ from leapp.libraries.common.config.version import get_source_major_version
 from leapp.libraries.stdlib import api
 from leapp.models import (
     CustomTargetRepository,
+    InstalledRPM,
     RepositoriesBlacklisted,
     RepositoriesFacts,
     RepositoriesMapping,
@@ -21,7 +22,6 @@ def _get_enabled_repoids():
     """
     Collects repoids of all enabled repositories on the source system.
 
-    :param repositories_facts: Iterable of RepositoriesFacts containing info about repositories on the source system.
     :returns: Set of all enabled repository IDs present on the source system.
     :rtype: Set[str]
     """
@@ -32,6 +32,14 @@ def _get_enabled_repoids():
                 if repo.enabled:
                     enabled_repoids.add(repo.repoid)
     return enabled_repoids
+
+
+def _get_repoids_from_installed_packages():
+    repoids_from_installed_packages = set()
+    for installed_packages in api.consume(InstalledRPM):
+        for rpm_package in installed_packages.items:
+            repoids_from_installed_packages.add(rpm_package.repository)
+    return repoids_from_installed_packages
 
 
 def _get_blacklisted_repoids():
@@ -59,7 +67,11 @@ def _get_used_repo_dict():
     return used
 
 
-def _setup_repomap_handler(src_repoids, mapping_list):
+def _combine_repomap_messages(mapping_list):
+    """
+    Combine multiple repository mapping messages into one.
+    Needed because we might get more than one message if there are vendors present.
+    """
     combined_mapping = []
     combined_repositories = []
     # Depending on whether there are any vendors present, we might get more than one message.
@@ -72,12 +84,7 @@ def _setup_repomap_handler(src_repoids, mapping_list):
         repositories=combined_repositories
     )
 
-    rhui_info = next(api.consume(RHUIInfo), RHUIInfo(provider=''))
-    repomap = setuptargetrepos_repomap.RepoMapDataHandler(combined_repomapping, cloud_provider=rhui_info.provider)
-    # TODO(pstodulk): what about skip this completely and keep the default 'ga'..?
-    default_channels = setuptargetrepos_repomap.get_default_repository_channels(repomap, src_repoids)
-    repomap.set_default_channels(default_channels)
-    return repomap
+    return combined_repomapping
 
 
 def _get_mapped_repoids(repomap, src_repoids):
@@ -129,15 +136,18 @@ def _get_vendor_custom_repos(enabled_repos, mapping_list):
 
 
 def process():
-    # load all data / messages
+    # Load relevant data from messages
     used_repoids_dict = _get_used_repo_dict()
     enabled_repoids = _get_enabled_repoids()
     excluded_repoids = _get_blacklisted_repoids()
 
-    mapping_list = list(api.consume(RepositoriesMapping))
+    # Remember that we can't just grab one message, each vendor can have its own mapping.
+    repo_mapping_list = list(api.consume(RepositoriesMapping))
 
     custom_repos = _get_custom_target_repos()
-    vendor_repos = _get_vendor_custom_repos(enabled_repoids, mapping_list)
+    repoids_from_installed_packages = _get_repoids_from_installed_packages()
+
+    vendor_repos = _get_vendor_custom_repos(enabled_repoids, repo_mapping_list)
 
     api.current_logger().debug('Custom repos: {}'.format([f.repoid for f in custom_repos]))
     api.current_logger().debug('Vendor repos: {}'.format([f.repoid for f in vendor_repos]))
@@ -147,20 +157,34 @@ def process():
     api.current_logger().debug('Used repos: {}'.format(used_repoids_dict.keys()))
     api.current_logger().debug('Enabled repos: {}'.format(list(enabled_repoids)))
 
-    # TODO(pstodulk): isn't that a potential issue that we map just enabled repos
-    # instead of enabled + used repos??
-    # initialise basic data
-    repomap = _setup_repomap_handler(enabled_repoids, mapping_list)
-    mapped_repoids = _get_mapped_repoids(repomap, enabled_repoids)
-    api.current_logger().debug('Mapped repos: {}'.format(mapped_repoids))
-    skipped_repoids = enabled_repoids & set(used_repoids_dict.keys()) - mapped_repoids
+    # Setup repomap handler
+    repo_mappig_msg = _combine_repomap_messages(repo_mapping_list)
+    rhui_info = next(api.consume(RHUIInfo), RHUIInfo(provider=''))
+    repomap = setuptargetrepos_repomap.RepoMapDataHandler(repo_mappig_msg, cloud_provider=rhui_info.provider)
 
-    # Now get the info what should be the target RHEL repositories
-    expected_repos = repomap.get_expected_target_pesid_repos(enabled_repoids)
+    # Filter set of repoids from installed packages so that it contains only repoids with mapping
+    repoids_from_installed_packages_with_mapping = _get_mapped_repoids(repomap, repoids_from_installed_packages)
+
+    # Set of repoid that are going to be mapped to target repoids containing enabled repoids and also repoids from
+    # installed packages that have mapping to prevent missing repositories that are disabled during the upgrade, but
+    # can be used to upgrade installed packages.
+    repoids_to_map = enabled_repoids.union(repoids_from_installed_packages_with_mapping)
+
+    # Set default repository channels for the repomap
+    # TODO(pstodulk): what about skip this completely and keep the default 'ga'..?
+    default_channels = setuptargetrepos_repomap.get_default_repository_channels(repomap, repoids_to_map)
+    repomap.set_default_channels(default_channels)
+
+    # Get target RHEL repoids based on the repomap
+    expected_repos = repomap.get_expected_target_pesid_repos(repoids_to_map)
     api.current_logger().debug('Expected repos: {}'.format(expected_repos.keys()))
     target_rhel_repoids = set()
     for target_pesid, target_pesidrepo in expected_repos.items():
         if not target_pesidrepo:
+            # NOTE this could happen only for enabled repositories part of the set,
+            # since the repositories collected from installed packages already contain
+            # only mappable repoids.
+
             # With the original repomap data, this should not happen (this should
             # currently point to a problem in our data
             # TODO(pstodulk): add report? inhibitor? what should be in the report?
@@ -191,6 +215,9 @@ def process():
     custom_repos = [repo for repo in custom_repos if repo.repoid not in excluded_repoids]
     custom_repos = sorted(custom_repos, key=lambda x: x.repoid)
 
+    # produce message about skipped repositories
+    enabled_repoids_with_mapping = _get_mapped_repoids(repomap, enabled_repoids)
+    skipped_repoids = enabled_repoids & set(used_repoids_dict.keys()) - enabled_repoids_with_mapping
     if skipped_repoids:
         pkgs = set()
         for repo in skipped_repoids:

@@ -18,7 +18,7 @@ report_server_inst_hint = (
 )
 
 # Link URL for postgresql-server report
-report_server_inst_link_url = 'https://access.redhat.com/articles/6654721'  # noqa: E501; pylint: disable=line-too-long
+report_server_inst_link_url = 'https://access.redhat.com/articles/6654721'
 
 
 def _report_server_installed():
@@ -33,7 +33,7 @@ def _report_server_installed():
         reporting.Title('PostgreSQL (postgresql-server) has been detected on your system'),
         reporting.Summary(report_server_inst_summary),
         reporting.Severity(reporting.Severity.MEDIUM),
-        reporting.Tags([reporting.Tags.SERVICES]),
+        reporting.Groups([reporting.Groups.SERVICES]),
         reporting.ExternalLink(title='Migrating to a RHEL 9 version of PostgreSQL',
                                url=report_server_inst_link_url),
         reporting.RelatedResource('package', 'postgresql-server'),
@@ -46,8 +46,6 @@ def report_installed_packages(_context=api):
     Create reports according to detected PostgreSQL packages.
 
     Create the report if the postgresql-server rpm (RH signed) is installed.
-    Additionally, create another report if the postgresql-contrib rpm
-    is installed.
     """
     has_server = has_package(InstalledRedHatSignedRPM, 'postgresql-server', context=_context)
 

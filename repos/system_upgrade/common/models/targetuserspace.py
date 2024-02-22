@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import BootPrepTopic, TargetUserspaceTopic, TransactionTopic
 from leapp.utils.deprecation import deprecated
 
@@ -54,7 +54,7 @@ class CopyFile(Model):
 
     src = fields.String()
     """
-    Cannonical path to the file (on the host) that should be copied
+    Canonical path to the file (on the host) that should be copied
     """
 
     dst = fields.Nullable(fields.String())

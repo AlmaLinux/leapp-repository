@@ -1,8 +1,8 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.libraries.actor import migratebrltty
 from leapp.models import BrlttyMigrationDecision
-from leapp.reporting import Report, create_report
-from leapp import reporting
+from leapp.reporting import create_report, Report
 from leapp.tags import ApplicationsPhaseTag, IPUWorkflowTag
 
 
@@ -34,6 +34,6 @@ class MigrateBrltty(Actor):
                     reporting.Title('brltty configuration files migrated'),
                     reporting.Summary(report_summary),
                     reporting.Severity(reporting.Severity.LOW),
-                    reporting.Tags([reporting.Tags.TOOLS, reporting.Tags.ACCESSIBILITY]),
+                    reporting.Groups([reporting.Groups.TOOLS, reporting.Groups.ACCESSIBILITY]),
                     reporting.RelatedResource('package', 'brltty')
                 ])

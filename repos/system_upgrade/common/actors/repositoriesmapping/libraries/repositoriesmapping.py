@@ -1,10 +1,12 @@
 import os
+from collections import defaultdict
 
-from leapp.libraries.common.config.version import get_target_major_version, get_source_major_version
+from leapp.libraries.common.config.version import get_source_major_version, get_target_major_version
 from leapp.libraries.common.repomaputils import RepoMapData, read_repofile, inhibit_upgrade
 from leapp.libraries.stdlib import api
 from leapp.models import RepositoriesMapping
 from leapp.models.fields import ModelViolationError
+
 
 OLD_REPOMAP_FILE = 'repomap.csv'
 """The name of the old, deprecated repository mapping file (no longer used)."""

@@ -1,10 +1,10 @@
 import os
 
 from leapp.actors import Actor
-from leapp.models import InstalledTargetKernelVersion, KernelCmdlineArg, FirmwareFacts
-from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.actor import kernelcmdlineconfig
+from leapp.models import FirmwareFacts, InstalledTargetKernelInfo, KernelCmdlineArg, TargetKernelCmdlineArgTasks
+from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
 
 
 class KernelCmdlineConfig(Actor):
@@ -13,7 +13,7 @@ class KernelCmdlineConfig(Actor):
     """
 
     name = 'kernelcmdlineconfig'
-    consumes = (KernelCmdlineArg, InstalledTargetKernelVersion, FirmwareFacts)
+    consumes = (KernelCmdlineArg, InstalledTargetKernelInfo, FirmwareFacts, TargetKernelCmdlineArgTasks)
     produces = ()
     tags = (FinalizationPhaseTag, IPUWorkflowTag)
 
@@ -29,4 +29,4 @@ class KernelCmdlineConfig(Actor):
 
         if ff.firmware == 'bios' and os.path.ismount('/boot/efi'):
             configs = ['/boot/grub2/grub.cfg', '/boot/efi/EFI/redhat/grub.cfg']
-        kernelcmdlineconfig.process(configs)
+        kernelcmdlineconfig.modify_kernel_args_in_boot_cfg(configs)

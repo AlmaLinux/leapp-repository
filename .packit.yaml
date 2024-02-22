@@ -8,6 +8,9 @@ downstream_package_name: leapp-repository
 upstream_tag_template: 'v{version}'
 merge_pr_in_ci: false
 
+srpm_build_deps:
+- make
+
 # This is just for the build from the CLI - all other builds for jobs use own
 # actions
 actions:
@@ -81,3 +84,207 @@ jobs:
     post-upstream-clone:
     # builds from master branch should start with 100 release, to have high priority
     - bash -c "sed -i \"s/1%{?dist}/100%{?dist}/g\" packaging/leapp-repository.spec"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/tmt-plans"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-7-x86_64:
+      distros: [RHEL-7.9-ZStream]
+  identifier: tests-7.9to8.6
+  tmt_plan: "^(?!.*max_sst)(.*tier1)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-7.9"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "7.9"
+    TARGET_RELEASE: "8.6"
+    LEAPPDATA_BRANCH: "upstream"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-7-x86_64:
+      distros: [RHEL-7.9-ZStream]
+  identifier: tests-7.9to8.8
+  tmt_plan: "^(?!.*max_sst)(.*tier1)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-7.9"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "7.9"
+    TARGET_RELEASE: "8.8"
+    LEAPPDATA_BRANCH: "upstream"
+
+# - job: tests
+#   fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+#   fmf_ref: "master"
+#   use_internal_tf: True
+#   trigger: pull_request
+#   targets:
+#     epel-7-x86_64:
+#       distros: [RHEL-7.9-ZStream]
+#   identifier: tests-7.9to8.8-sst
+#   tmt_plan: "^(?!.*tier[2-3].*)(.*max_sst.*)"
+#   tf_post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+#   tf_extra_params:
+#     environments:
+#       - tmt:
+#           context:
+#             distro: "rhel-7.9"
+#   env:
+#     SOURCE_RELEASE: "7.9"
+#     TARGET_RELEASE: "8.8"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-7-x86_64:
+      distros: [RHEL-7.9-rhui]
+  identifier: tests-7to8-aws-e2e
+  tmt_plan: "^(?!.*upgrade_plugin)(?!.*tier[2-3].*)(?!.*rhsm)(?!.*c2r)(?!.*sap)(?!.*8to9)(.*e2e)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-7.9"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys; yum-config-manager --enable rhel-7-server-rhui-optional-rpms"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "7.9"
+    TARGET_RELEASE: "8.6"
+    RHUI: "aws"
+    LEAPPDATA_BRANCH: "upstream"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-8-x86_64:
+      distros: [RHEL-8.6.0-Nightly]
+  identifier: tests-8.6to9.0
+  tmt_plan: "^(?!.*max_sst)(.*tier1)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-8.6"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "8.6"
+    TARGET_RELEASE: "9.0"
+    RHSM_REPOS: "rhel-8-for-x86_64-appstream-eus-rpms,rhel-8-for-x86_64-baseos-eus-rpms"
+    LEAPPDATA_BRANCH: "upstream"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-8-x86_64:
+      distros: [RHEL-8.8.0-Nightly]
+  identifier: tests-8.8to9.2
+  tmt_plan: "^(?!.*max_sst)(.*tier1)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-8.8"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "8.8"
+    TARGET_RELEASE: "9.2"
+    RHSM_REPOS: "rhel-8-for-x86_64-appstream-beta-rpms,rhel-8-for-x86_64-baseos-beta-rpms"
+    LEAPPDATA_BRANCH: "upstream"
+    LEAPP_DEVEL_TARGET_RELEASE: "9.2"
+
+# - job: tests
+#   fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+#   fmf_ref: "master"
+#   use_internal_tf: True
+#   trigger: pull_request
+#   targets:
+#     epel-8-x86_64:
+#       distros: [RHEL-8.6.0-Nightly]
+#   identifier: tests-8.6to9.0-sst
+#   tmt_plan: "^(?!.*tier[2-3].*)(.*max_sst.*)"
+#   tf_post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+#   tf_extra_params:
+#     environments:
+#       - tmt:
+#           context:
+#             distro: "rhel-8.6"
+#   env:
+#     SOURCE_RELEASE: "8.6"
+#     TARGET_RELEASE: "9.0"
+#     RHSM_REPOS: "rhel-8-for-x86_64-appstream-eus-rpms,rhel-8-for-x86_64-baseos-eus-rpms"
+#     LEAPPDATA_BRANCH: "upstream"
+
+- job: tests
+  fmf_url: "https://gitlab.cee.redhat.com/oamg/leapp-tests"
+  fmf_ref: "master"
+  use_internal_tf: True
+  trigger: pull_request
+  targets:
+    epel-8-x86_64:
+      distros: [RHEL-8.6-rhui]
+  identifier: tests-8to9-aws-e2e
+  tmt_plan: "^(?!.*upgrade_plugin)(?!.*tier[2-3].*)(?!.*rhsm)(?!.*c2r)(?!.*sap)(?!.*7to8)(.*e2e)"
+  tf_extra_params:
+    environments:
+      - tmt:
+          context:
+            distro: "rhel-8.6"
+        # tag resources as sst_upgrades to enable cost metrics collection
+        settings:
+          provisioning:
+            post_install_script: "#!/bin/sh\nsudo sed -i s/.*ssh-rsa/ssh-rsa/ /root/.ssh/authorized_keys"
+            tags:
+              BusinessUnit: sst_upgrades
+  env:
+    SOURCE_RELEASE: "8.6"
+    TARGET_RELEASE: "9.0"
+    RHSM_REPOS: "rhel-8-for-x86_64-appstream-eus-rpms,rhel-8-for-x86_64-baseos-eus-rpms"
+    RHUI: "aws"
+    LEAPPDATA_BRANCH: "upstream"

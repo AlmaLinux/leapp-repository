@@ -1,8 +1,8 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.models import ActiveKernelModulesFacts
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
-from leapp import reporting
-from leapp.reporting import Report, create_report
 
 
 class CheckBtrfs(Actor):
@@ -35,15 +35,15 @@ class CheckBtrfs(Actor):
                         ),
                         reporting.ExternalLink(
                             title='Considerations in adopting RHEL 8 - btrfs has been removed.',
-                            url='https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/considerations_in_adopting_rhel_8/file-systems-and-storage_considerations-in-adopting-rhel-8#btrfs-has-been-removed_file-systems-and-storage'  # noqa: E501; pylint: disable=line-too-long
+                            url='https://red.ht/file-systems-and-storage-removed-btrfs-rhel-8'
                         ),
                         reporting.ExternalLink(
                             title='How do I prevent a kernel module from loading automatically?',
                             url='https://access.redhat.com/solutions/41278'
                         ),
                         reporting.Severity(reporting.Severity.HIGH),
-                        reporting.Flags([reporting.Flags.INHIBITOR]),
-                        reporting.Tags([reporting.Tags.FILESYSTEM]),
+                        reporting.Groups([reporting.Groups.INHIBITOR]),
+                        reporting.Groups([reporting.Groups.FILESYSTEM]),
                         reporting.Remediation(hint=hint, commands=[command]),
                         reporting.RelatedResource('kernel-driver', 'btrfs')
                     ])

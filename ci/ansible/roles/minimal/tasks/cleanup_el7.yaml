@@ -1,0 +1,10 @@
+---
+# Remove old kernels
+- name: Install the yum-utils
+  ansible.builtin.yum:
+    name: yum-utils
+    state: present
+    update_cache: yes
+
+- name: Remove the old kernels on EL7
+  ansible.builtin.command: package-cleanup -y --oldkernels --count=1

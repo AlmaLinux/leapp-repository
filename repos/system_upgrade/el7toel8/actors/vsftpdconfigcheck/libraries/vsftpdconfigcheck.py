@@ -1,6 +1,6 @@
-from leapp.reporting import create_report
 from leapp import reporting
 from leapp.libraries.common.tcpwrappersutils import config_applies_to_daemon
+from leapp.reporting import create_report
 
 
 def check_config_supported(tcpwrap_facts, vsftpd_facts):
@@ -21,8 +21,8 @@ def check_config_supported(tcpwrap_facts, vsftpd_facts):
                     )
             ),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SERVICES, reporting.Tags.NETWORK]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.SERVICES, reporting.Groups.NETWORK]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.ExternalLink(
                 title='Replacing TCP Wrappers in RHEL 8',
                 url='https://access.redhat.com/solutions/3906701'

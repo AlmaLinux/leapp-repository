@@ -2,17 +2,20 @@ import contextlib
 import itertools
 import json
 import os
+import re
 import shutil
 
 import six
 
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import dnfconfig, guards, mounting, overlaygen, rhsm, utils
+from leapp.libraries.common.config import get_env
 from leapp.libraries.common.config.version import get_target_major_version, get_target_version
 from leapp.libraries.stdlib import api, CalledProcessError, config
 from leapp.models import DNFWorkaround
 
 DNF_PLUGIN_NAME = 'rhel_upgrade.py'
+_DEDICATED_URL = 'https://access.redhat.com/solutions/7011704'
 
 
 class _DnfPluginPathStr(str):
@@ -76,6 +79,22 @@ def _rebuild_rpm_db(context, root=None):
     context.call(cmd)
 
 
+def _the_nogpgcheck_option_used():
+    return get_env('LEAPP_NOGPGCHECK', '0') == '1'
+
+def _convert_err_strings(err):
+    """
+    Convert error strings to utf-8 if needed to avoid UnicodeDecodeError when
+    logging the error message.
+    """
+    err_stdout = err.stdout
+    err_stderr = err.stderr
+    if six.PY2:
+        err_stdout = err.stdout.encode('utf-8', 'xmlcharrefreplace')
+        err_stderr = err.stderr.encode('utf-8', 'xmlcharrefreplace')
+    return err_stdout, err_stderr
+
+
 def build_plugin_data(target_repoids, debug, test, tasks, on_aws):
     """
     Generates a dictionary with the DNF plugin data.
@@ -96,7 +115,7 @@ def build_plugin_data(target_repoids, debug, test, tasks, on_aws):
             'debugsolver': debug,
             'disable_repos': True,
             'enable_repos': target_repoids,
-            'gpgcheck': False,
+            'gpgcheck': not _the_nogpgcheck_option_used(),
             'platform_id': 'platform:el{}'.format(get_target_major_version()),
             'releasever': get_target_version(),
             'installroot': '/installroot',
@@ -144,7 +163,79 @@ def backup_debug_data(context):
             api.current_logger().warning('Failed to copy debugdata. Message: {}'.format(str(e)), exc_info=True)
 
 
-def _transaction(context, stage, target_repoids, tasks, plugin_info, test=False, cmd_prefix=None, on_aws=False):
+def _handle_transaction_err_msg_old(stage, xfs_info, err):
+    # NOTE(pstodulk): This is going to be removed in future!
+    message = 'DNF execution failed with non zero exit code.'
+    err_stdout, err_stderr = _convert_err_strings(err)
+    details = {'STDOUT': err_stdout, 'STDERR': err_stderr}
+
+    if 'more space needed on the' in err.stderr and stage != 'upgrade':
+        # Disk Requirements:
+        #   At least <size> more space needed on the <path> filesystem.
+        #
+        article_section = 'Generic case'
+        if xfs_info.present and xfs_info.without_ftype:
+            article_section = 'XFS ftype=0 case'
+
+        message = ('There is not enough space on the file system hosting /var/lib/leapp directory '
+                   'to extract the packages.')
+        details = {'hint': "Please follow the instructions in the '{}' section of the article at: "
+                           "link: https://access.redhat.com/solutions/5057391".format(article_section)}
+
+    raise StopActorExecutionError(message=message, details=details)
+
+
+def _handle_transaction_err_msg(stage, xfs_info, err, is_container=False):
+    # ignore the fallback when the error is related to the container issue
+    # e.g. installation of packages inside the container; so it's unrelated
+    # to the upgrade transactions.
+    if get_env('LEAPP_OVL_LEGACY', '0') == '1' and not is_container:
+        _handle_transaction_err_msg_old(stage, xfs_info, err)
+        return  # not needed actually as the above function raises error, but for visibility
+    NO_SPACE_STR = 'more space needed on the'
+    message = 'DNF execution failed with non zero exit code.'
+    err_stdout, err_stderr = _convert_err_strings(err)
+    details = {'STDOUT': err_stdout, 'STDERR': err_stderr}
+    if NO_SPACE_STR not in err.stderr:
+        raise StopActorExecutionError(message=message, details=details)
+
+    # Disk Requirements:
+    #   At least <size> more space needed on the <path> filesystem.
+    #
+    missing_space = [line.strip() for line in err.stderr.split('\n') if NO_SPACE_STR in line]
+    if is_container:
+        size_str = re.match(r'At least (.*) more space needed', missing_space[0]).group(1)
+        message = 'There is not enough space on the file system hosting /var/lib/leapp.'
+        hint = (
+            'Increase the free space on the filesystem hosting'
+            ' /var/lib/leapp by {} at minimum. It is suggested to provide'
+            ' reasonably more space to be able to perform all planned actions'
+            ' (e.g. when 200MB is missing, add 1700MB or more).\n\n'
+            'It is also a good practice to create dedicated partition'
+            ' for /var/lib/leapp when more space is needed, which can be'
+            ' dropped after the system upgrade is fully completed'
+            ' For more info, see: {}'
+            .format(size_str, _DEDICATED_URL)
+        )
+        # we do not want to confuse customers by the orig msg speaking about
+        # missing space on '/'. Skip the Disk Requirements section.
+        # The information is part of the hint.
+        details = {'hint': hint}
+    else:
+        message = 'There is not enough space on some file systems to perform the upgrade transaction.'
+        hint = (
+            'Increase the free space on listed filesystems. Presented values'
+            ' are required minimum calculated by RPM and it is suggested to'
+            ' provide reasonably more free space (e.g. when 200 MB is missing'
+            ' on /usr, add 1200MB or more).'
+        )
+        details = {'hint': hint, 'Disk Requirements': '\n'.join(missing_space)}
+
+    raise StopActorExecutionError(message=message, details=details)
+
+
+def _transaction(context, stage, target_repoids, tasks, plugin_info, xfs_info,
+                 test=False, cmd_prefix=None, on_aws=False):
     """
     Perform the actual DNF rpm download via our DNF plugin
     """
@@ -216,18 +307,8 @@ def _transaction(context, stage, target_repoids, tasks, plugin_info, test=False,
                 message='Failed to execute dnf. Reason: {}'.format(str(e))
             )
         except CalledProcessError as e:
-            err_stdout = e.stdout
-            err_stderr = e.stderr
-            if six.PY2:
-                err_stdout = e.stdout.encode('utf-8', 'xmlcharrefreplace')
-                err_stderr = e.stderr.encode('utf-8', 'xmlcharrefreplace')
-
-            api.current_logger().error('DNF execution failed: ')
-            raise StopActorExecutionError(
-                message='DNF execution failed with non zero exit code.\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}'.format(
-                    stdout=err_stdout, stderr=err_stderr
-                )
-            )
+            api.current_logger().error('Cannot calculate, check, test, or perform the upgrade transaction.')
+            _handle_transaction_err_msg(stage, xfs_info, e, is_container=False)
         finally:
             if stage == 'check':
                 backup_debug_data(context=context)
@@ -261,7 +342,7 @@ def apply_workarounds(context=None):
             context.call(['/bin/bash', '-c', cmd_str])
         except (OSError, CalledProcessError) as e:
             raise StopActorExecutionError(
-                message=('Failed to exceute script to apply transaction workaround {display_name}.'
+                message=('Failed to execute script to apply transaction workaround {display_name}.'
                          ' Message: {error}'.format(error=str(e), display_name=workaround.display_name))
             )
 
@@ -279,8 +360,10 @@ def install_initramdisk_requirements(packages, target_userspace_info, used_repos
         cmd = [
             'dnf',
             'install',
-            '-y',
-            '--nogpgcheck',
+            '-y']
+        if _the_nogpgcheck_option_used():
+            cmd.append('--nogpgcheck')
+        cmd += [
             '--setopt=module_platform_id=platform:el{}'.format(get_target_major_version()),
             '--setopt=keepcache=1',
             '--releasever', api.current_actor().configuration.version.target,
@@ -294,13 +377,21 @@ def install_initramdisk_requirements(packages, target_userspace_info, used_repos
         if get_target_major_version() == '9':
             # allow handling new RHEL 9 syscalls by systemd-nspawn
             env = {'SYSTEMD_SECCOMP': '0'}
-        context.call(cmd, env=env)
+        try:
+            context.call(cmd, env=env)
+        except CalledProcessError as e:
+            api.current_logger().error(
+                'Cannot install packages in the target container required to build the upgrade initramfs.'
+            )
+            _handle_transaction_err_msg('', None, e, is_container=True)
 
 
-def perform_transaction_install(target_userspace_info, storage_info, used_repos, tasks, plugin_info):
+def perform_transaction_install(target_userspace_info, storage_info, used_repos, tasks, plugin_info, xfs_info):
     """
     Performs the actual installation with the DNF rhel-upgrade plugin using the target userspace
     """
+
+    stage = 'upgrade'
 
     # These bind mounts are performed by systemd-nspawn --bind parameters
     bind_mounts = [
@@ -340,70 +431,126 @@ def perform_transaction_install(target_userspace_info, storage_info, used_repos,
         # communicate with udev
         cmd_prefix = ['nsenter', '--ipc=/installroot/proc/1/ns/ipc']
 
+        disable_plugins = []
+        if plugin_info:
+            for info in plugin_info:
+                if stage in info.disable_in:
+                    disable_plugins += [info.name]
+
         # we have to ensure the leapp packages will stay untouched
         # Note: this is the most probably duplicate action - it should be already
         # set like that, however seatbelt is a good thing.
-        dnfconfig.exclude_leapp_rpms(context)
+        dnfconfig.exclude_leapp_rpms(context, disable_plugins)
 
         if get_target_major_version() == '9':
             _rebuild_rpm_db(context, root='/installroot')
         _transaction(
-            context=context, stage='upgrade', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks,
-            cmd_prefix=cmd_prefix
+            context=context, stage='upgrade', target_repoids=target_repoids, plugin_info=plugin_info,
+            xfs_info=xfs_info, tasks=tasks, cmd_prefix=cmd_prefix
         )
 
         # we have to ensure the leapp packages will stay untouched even after the
-        # upgrade is fully finished (it cannot be done before the upgarde
+        # upgrade is fully finished (it cannot be done before the upgrade
         # on the host as the config-manager plugin is available since rhel-8)
-        dnfconfig.exclude_leapp_rpms(mounting.NotIsolatedActions(base_dir='/'))
+        dnfconfig.exclude_leapp_rpms(mounting.NotIsolatedActions(base_dir='/'), disable_plugins=disable_plugins)
 
 
 @contextlib.contextmanager
-def _prepare_perform(used_repos, target_userspace_info, xfs_info, storage_info):
+def _prepare_perform(used_repos, target_userspace_info, xfs_info, storage_info, target_iso=None):
+    reserve_space = overlaygen.get_recommended_leapp_free_space(target_userspace_info.path)
     with _prepare_transaction(used_repos=used_repos,
                               target_userspace_info=target_userspace_info
                               ) as (context, target_repoids, userspace_info):
         with overlaygen.create_source_overlay(mounts_dir=userspace_info.mounts, scratch_dir=userspace_info.scratch,
                                               xfs_info=xfs_info, storage_info=storage_info,
-                                              mount_target=os.path.join(context.base_dir, 'installroot')) as overlay:
-            yield context, overlay, target_repoids
+                                              mount_target=os.path.join(context.base_dir, 'installroot'),
+                                              scratch_reserve=reserve_space) as overlay:
+            with mounting.mount_upgrade_iso_to_root_dir(target_userspace_info.path, target_iso):
+                yield context, overlay, target_repoids
 
 
-def perform_transaction_check(target_userspace_info, used_repos, tasks, xfs_info, storage_info, plugin_info):
+def perform_transaction_check(target_userspace_info,
+                              used_repos,
+                              tasks,
+                              xfs_info,
+                              storage_info,
+                              plugin_info,
+                              target_iso=None):
     """
     Perform DNF transaction check using our plugin
     """
+
+    stage = 'check'
+
     with _prepare_perform(used_repos=used_repos, target_userspace_info=target_userspace_info, xfs_info=xfs_info,
-                          storage_info=storage_info) as (context, overlay, target_repoids):
+                          storage_info=storage_info, target_iso=target_iso) as (context, overlay, target_repoids):
         apply_workarounds(overlay.nspawn())
-        dnfconfig.exclude_leapp_rpms(context)
+
+        disable_plugins = []
+        if plugin_info:
+            for info in plugin_info:
+                if stage in info.disable_in:
+                    disable_plugins += [info.name]
+
+        dnfconfig.exclude_leapp_rpms(context, disable_plugins)
         _transaction(
-            context=context, stage='check', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks
+            context=context, stage='check', target_repoids=target_repoids, plugin_info=plugin_info, xfs_info=xfs_info,
+            tasks=tasks
         )
 
 
-def perform_rpm_download(target_userspace_info, used_repos, tasks, xfs_info, storage_info, plugin_info, on_aws=False):
+def perform_rpm_download(target_userspace_info,
+                         used_repos,
+                         tasks,
+                         xfs_info,
+                         storage_info,
+                         plugin_info,
+                         target_iso=None,
+                         on_aws=False):
     """
     Perform RPM download including the transaction test using dnf with our plugin
     """
-    with _prepare_perform(used_repos=used_repos, target_userspace_info=target_userspace_info, xfs_info=xfs_info,
-                          storage_info=storage_info) as (context, overlay, target_repoids):
+
+    stage = 'download'
+
+    with _prepare_perform(used_repos=used_repos,
+                          target_userspace_info=target_userspace_info,
+                          xfs_info=xfs_info,
+                          storage_info=storage_info,
+                          target_iso=target_iso) as (context, overlay, target_repoids):
+
+        disable_plugins = []
+        if plugin_info:
+            for info in plugin_info:
+                if stage in info.disable_in:
+                    disable_plugins += [info.name]
+
         apply_workarounds(overlay.nspawn())
-        dnfconfig.exclude_leapp_rpms(context)
+        dnfconfig.exclude_leapp_rpms(context, disable_plugins)
         _transaction(
             context=context, stage='download', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks,
-            test=True, on_aws=on_aws
+            test=True, on_aws=on_aws, xfs_info=xfs_info
         )
 
 
-def perform_dry_run(target_userspace_info, used_repos, tasks, xfs_info, storage_info, plugin_info, on_aws=False):
+def perform_dry_run(target_userspace_info,
+                    used_repos,
+                    tasks,
+                    xfs_info,
+                    storage_info,
+                    plugin_info,
+                    target_iso=None,
+                    on_aws=False):
     """
     Perform the dnf transaction test / dry-run using only cached data.
     """
-    with _prepare_perform(used_repos=used_repos, target_userspace_info=target_userspace_info, xfs_info=xfs_info,
-                          storage_info=storage_info) as (context, overlay, target_repoids):
+    with _prepare_perform(used_repos=used_repos,
+                          target_userspace_info=target_userspace_info,
+                          xfs_info=xfs_info,
+                          storage_info=storage_info,
+                          target_iso=target_iso) as (context, overlay, target_repoids):
         apply_workarounds(overlay.nspawn())
         _transaction(
             context=context, stage='dry-run', target_repoids=target_repoids, plugin_info=plugin_info, tasks=tasks,
-            test=True, on_aws=on_aws
+            test=True, on_aws=on_aws, xfs_info=xfs_info
         )

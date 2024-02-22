@@ -1,0 +1,258 @@
+RETRY = params.RETRY
+TIMEOUT = params.TIMEOUT
+
+pipeline {
+    agent {
+        label 'x86_64 && bm'
+    }
+    options {
+        timestamps()
+        parallelsAlwaysFailFast()
+    }
+    parameters {
+        choice(name: 'TARGET_DISTRO_FILTER', choices: ['almalinux-8', 'centos-stream-8', 'eurolinux-8', 'oraclelinux-8', 'rocky-8', 'all'], description: 'Select a target distro or all for ELevation')
+        choice(name: 'CONF_FILTER', choices: ['minimal', 'docker-ce'], description: 'Select a configuration')
+        string(name: 'LEAPP_SRC_GIT_USER', defaultValue: 'AlmaLinux', description: 'Input name of Git user of LEAPP source', trim: true)
+        string(name: 'LEAPP_SRC_GIT_BRANCH', defaultValue: 'almalinux', description: 'Input name of Git branch of LEAPP source', trim: true)
+        string(name: 'RETRY', defaultValue: '3', description: 'Input count of retry', trim: true)
+        string(name: 'TIMEOUT', defaultValue: '60', description: 'Input timeout value in minutes', trim: true)
+    }
+    environment {
+        VAGRANT_NO_COLOR = '1'
+    }
+    stages {
+        stage('Prepare') {
+            steps {
+                sh script: 'ansible-galaxy install -r ci/ansible/requirements.yaml',
+                    label: 'Install Ansible collections'
+                sh script: 'python3.11 -m venv .venv',
+                    label: 'Create Python virtual environment'
+                sh script: '. .venv/bin/activate && pip install --no-color pip pytest-testinfra paramiko',
+                    label: 'Install Testinfra'
+                sh script: 'git clone https://github.com/AlmaLinux/leapp-data.git --branch devel',
+                    label: 'Fetch devel version of leapp data'
+            }
+        }
+        stage('CreateSingleMachine') {
+            when {
+                expression { params.TARGET_DISTRO_FILTER != 'all' }
+            }
+            environment {
+                CONFIG = "${CONF_FILTER}"
+            }
+            steps {
+                script {
+                    def targetDistro = targetDistroSpec(TARGET_DISTRO_FILTER)
+
+                    sh script: 'cp ci/vagrant/el7toel8toel9_single.rb Vagrantfile',
+                        label: 'Generate Vagrantfile'
+                    sh script: "vagrant up $targetDistro.vmName",
+                        label: 'Create source VM'
+                }
+            }
+        }
+        stage('CreateMultiMachine') {
+            when {
+                expression { params.TARGET_DISTRO_FILTER == 'all' }
+            }
+            environment {
+                CONFIG = "${CONF_FILTER}"
+            }
+            steps {
+                    sh script: 'cp ci/vagrant/el7toel8_multi.rb Vagrantfile',
+                        label: 'Generate Vagrantfile'
+                    sh script: 'vagrant up',
+                        label: 'Create source VM'
+            }
+        }
+        stage('ELevationAndTest') {
+            matrix {
+                when {
+                    anyOf {
+                        expression { params.TARGET_DISTRO_FILTER == 'all' }
+                        expression { params.TARGET_DISTRO_FILTER == env.TARGET_DISTRO }
+                    }
+                }
+                axes {
+                    axis {
+                        name 'TARGET_DISTRO'
+                        values 'almalinux-8', 'centos-stream-8', 'eurolinux-8', 'oraclelinux-8', 'rocky-8'
+                    }
+                }
+                stages {
+                    stage('ELevate') {
+                        steps {
+                            retry(RETRY) {
+                                timeout(time: TIMEOUT, unit: 'MINUTES') {
+                                    script {
+                                        def targetDistro = targetDistroSpec(TARGET_DISTRO)
+
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo yum-config-manager --add-repo https://repo.almalinux.org/elevate/testing/elevate-testing.repo\"",
+                                            label: 'Add testing repo of ELevate'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo yum install -y leapp-upgrade\"",
+                                            label: 'Install testing version of ELevate'
+                                        sh script: "vagrant upload ci/scripts/install_elevate_dev.sh install_elevate_dev.sh $targetDistro.vmName",
+                                            label: 'Upload installer script to VMs'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo bash install_elevate_dev.sh -u ${LEAPP_SRC_GIT_USER} -b ${LEAPP_SRC_GIT_BRANCH}\"",
+                                            label: 'Install development version of ELevate',
+                                            returnStatus: true
+                                        sh script: "vagrant upload leapp-data/ leapp-data/ --compress $targetDistro.vmName",
+                                            label: 'Upload devel branch of leapp data'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo mkdir -p /etc/leapp/files/vendors.d\"",
+                                            label: 'Create directory structrue of leapp data'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo install -t /etc/leapp/files leapp-data/files/${targetDistro.leappData}/*\"",
+                                            label: 'Install devel version of leapp data'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo install -t /etc/leapp/files/vendors.d leapp-data/vendors.d/*\"",
+                                            label: 'Install devel version of leapp vendor data'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo mv -f /etc/leapp/files/leapp_upgrade_repositories.repo.el8 /etc/leapp/files/leapp_upgrade_repositories.repo\"",
+                                            label: 'Configure leapp upgrade repositories for EL7toEL8'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo mv -f /etc/leapp/files/repomap.json.el8 /etc/leapp/files/repomap.json\"",
+                                            label: 'Configure leapp repository mapping for EL7toEL8'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo yum -y install tree && sudo tree -ha /etc/leapp\"",
+                                            label: 'Check if development version of leapp data installed correctly'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo leapp preupgrade\"",
+                                            label: 'Start pre-upgrade check',
+                                            returnStatus: true
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"echo PermitRootLogin yes | sudo tee -a /etc/ssh/sshd_config\"",
+                                            label: 'Permit ssh as root login'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo leapp answer --section remove_pam_pkcs11_module_check.confirm=True\"",
+                                            label: 'Answer the leapp question'
+                                        sh script: "vagrant ssh $targetDistro.vmName -c \"sudo leapp upgrade\"",
+                                            label: 'Start the Upgrade'
+                                        sh script: "vagrant reload $targetDistro.vmName",
+                                            label: 'Reboot to the ELevate initramfs'
+                                        sh script: "vagrant ssh-config $targetDistro.vmName >> .vagrant/ssh-config",
+                                            label: 'Generate the ssh-config file'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    stage('Distro Tests') {
+                        when {
+                            anyOf {
+                                expression { params.CONF_FILTER == 'minimal' }
+                                expression { params.CONF_FILTER == 'docker-ce' }
+                            }
+                        }
+                        steps {
+                            retry(RETRY) {
+                                timeout(time: TIMEOUT, unit: 'MINUTES') {
+                                    script {
+                                        def targetDistro = targetDistroSpec(TARGET_DISTRO)
+
+                                        sh script: 'rm -f conftest.py pytest.ini',
+                                            label: 'Delete root conftest.py file'
+                                        sh script: """
+                                        . .venv/bin/activate \
+                                        && py.test -v --hosts=${targetDistro.vmName} \
+                                        --ssh-config=.vagrant/ssh-config \
+                                        --junit-xml ci/tests/tests/distro/test_osinfo_${targetDistro.vmName}_junit.xml \
+                                        ci/tests/tests/distro/test_osinfo_${targetDistro.vmName}.py
+                                        """,
+                                            label: 'Run the distro specific tests'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    stage('Docker Tests') {
+                        when {
+                            anyOf {
+                                expression { params.CONF_FILTER == 'docker-ce' }
+                            }
+                        }
+                        steps {
+                            retry(RETRY) {
+                                timeout(time: TIMEOUT, unit: 'MINUTES') {
+                                    script {
+                                        def targetDistro = targetDistroSpec(TARGET_DISTRO)
+
+                                        sh script: """
+                                        . .venv/bin/activate \
+                                        && py.test -v --hosts=${targetDistro.vmName} \
+                                        --ssh-config=.vagrant/ssh-config \
+                                        --junit-xml ci/tests/tests/docker/test_docker_ce_${targetDistro.vmName}_junit.xml \
+                                        ci/tests/tests/docker/test_docker_ce.py
+                                        """,
+                                            label: 'Run the docker specific tests'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            junit testResults: 'ci/tests/tests/**/**_junit.xml',
+                skipPublishingChecks: true
+        }
+        cleanup {
+            sh script: 'vagrant destroy -f --no-parallel -g',
+                label: 'Destroy VMs'
+            cleanWs()
+        }
+    }
+}
+
+def targetDistroSpec(distro) {
+    def spec = [:]
+
+    switch (distro) {
+        case 'almalinux-8':
+            vm = 'almalinux_8'
+            ldata = 'almalinux'
+
+            spec = [
+                vmName: vm,
+                leappData: ldata
+            ]
+            break
+        case 'centos-stream-8':
+            vm = 'centosstream_8'
+            ldata = 'centos'
+
+            spec = [
+                vmName: vm,
+                leappData: ldata
+            ]
+            break
+        case 'eurolinux-8':
+            vm = 'eurolinux_8'
+            ldata = 'eurolinux'
+
+            spec = [
+                vmName: vm,
+                leappData: ldata
+            ]
+            break
+        case 'oraclelinux-8':
+            vm = 'oraclelinux_8'
+            ldata = 'oraclelinux'
+
+            spec = [
+                vmName: vm,
+                leappData: ldata
+            ]
+            break
+        case 'rocky-8':
+            vm = 'rocky_8'
+            ldata = 'rocky'
+
+            spec = [
+                vmName: vm,
+                leappData: ldata
+            ]
+            break
+        default:
+            spec = [
+                vmName: 'unknown',
+                leappData: 'unknown'
+            ]
+            break
+    }
+    return spec
+}

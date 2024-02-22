@@ -2,7 +2,9 @@ import operator
 
 import six
 
+from leapp.libraries.common import kernel as kernel_lib
 from leapp.libraries.stdlib import api
+from leapp.utils.deprecation import deprecated
 
 OP_MAP = {
     '>': operator.gt,
@@ -13,8 +15,8 @@ OP_MAP = {
 
 _SUPPORTED_VERSIONS = {
     # Note: 'rhel-alt' is detected when on 'rhel' with kernel 4.x
-    '7': {'rhel': ['7.9'], 'rhel-alt': ['7.6'], 'rhel-saphana': ['7.9'], 'centos': ['7.9'], 'eurolinux': ['7.9'], 'ol': ['7.9'], 'cloudlinux': ['7.9'], 'scientific': ['7.9']},
-    '8': {'rhel': ['8.5', '8.6', '8.7', '8.8', '8.9', '8.10'], 'centos': ['8.5'], 'almalinux': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'eurolinux': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'ol': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'rocky': ['8.6', '8.7', '8.8', '8.9', '8.10']},
+    '7': {'rhel': ['7.9'], 'rhel-alt': [], 'rhel-saphana': ['7.9'], 'centos': ['7.9'], 'eurolinux': ['7.9'], 'ol': ['7.9'], 'cloudlinux': ['7.9'], 'scientific': ['7.9']},
+    '8': {'rhel': ['8.5', '8.6', '8.8', '8.9', '8.10'], 'rhel-saphana': ['8.6', '8.8', '8.9', '8.10'], 'centos': ['8.5'], 'almalinux': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'eurolinux': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'ol': ['8.6', '8.7', '8.8', '8.9', '8.10'], 'rocky': ['8.6', '8.7', '8.8', '8.9', '8.10']},
 }
 
 
@@ -285,6 +287,7 @@ def is_rhel_alt():
     return conf.os_release.release_id == 'rhel' and conf.kernel[0] == '4'
 
 
+@deprecated(since='2023-08-15', message='This information is now provided by KernelInfo message.')
 def is_rhel_realtime():
     """
     Check whether the original system is RHEL Real Time.
@@ -301,7 +304,9 @@ def is_rhel_realtime():
     conf = api.current_actor().configuration
     if conf.os_release.release_id != 'rhel':
         return False
-    return '.rt' in conf.kernel.split('-')[1]
+
+    kernel_type = kernel_lib.determine_kernel_type_from_uname(get_source_version(), conf.kernel)
+    return kernel_type == kernel_lib.KernelType.REALTIME
 
 
 def is_supported_version():

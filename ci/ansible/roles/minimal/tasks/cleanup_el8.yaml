@@ -1,0 +1,7 @@
+---
+# Remove old kernels
+- name: Remove old kernels on EL8
+  ansible.builtin.command: dnf -y remove --oldinstallonly
+  register: removeoldkernels
+  changed_when: removeoldkernels.rc == 0
+  failed_when: removeoldkernels.rc > 1

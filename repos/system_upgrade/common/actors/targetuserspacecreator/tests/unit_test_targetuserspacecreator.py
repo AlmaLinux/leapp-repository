@@ -27,6 +27,7 @@ def adjust_cwd():
 class MockedMountingBase(object):
     def __init__(self, **dummy_kwargs):
         self.called_copytree_from = []
+        self.target = ''
 
     def copytree_from(self, src, dst):
         self.called_copytree_from.append((src, dst))
@@ -301,17 +302,20 @@ def test_gather_target_repositories_rhui(monkeypatch):
     assert target_repoids == set(['rhui-1', 'rhui-2'])
 
 
-@pytest.mark.skip(reason="Currently not implemented in the actor. It's TODO.")
-def test_gather_target_repositories_required_not_available(monkeypatch):
+def test_gather_target_repositories_baseos_appstream_not_available(monkeypatch):
     # If the repos that Leapp identifies as required for the upgrade (based on the repo mapping and PES data) are not
     # available, an exception shall be raised
+
+    indata = testInData(
+        _PACKAGES_MSGS, _RHSMINFO_MSG, None, _XFS_MSG, _STORAGEINFO_MSG, None
+    )
+    monkeypatch.setattr(rhsm, 'skip_rhsm', lambda: False)
 
     mocked_produce = produce_mocked()
     monkeypatch.setattr(userspacegen.api, 'current_actor', CurrentActorMocked())
     monkeypatch.setattr(userspacegen.api.current_actor(), 'produce', mocked_produce)
     # The available RHSM repos
     monkeypatch.setattr(rhsm, 'get_available_repo_ids', lambda x: ['repoidA', 'repoidB', 'repoidC'])
-    monkeypatch.setattr(rhsm, 'skip_rhsm', lambda: False)
     # The required RHEL repos based on the repo mapping and PES data + custom repos required by third party actors
     monkeypatch.setattr(userspacegen.api, 'consume', lambda x: iter([models.TargetRepositories(
         rhel_repos=[models.RHELTargetRepository(repoid='repoidX'),
@@ -319,12 +323,41 @@ def test_gather_target_repositories_required_not_available(monkeypatch):
         custom_repos=[models.CustomTargetRepository(repoid='repoidCustom')])]))
 
     with pytest.raises(StopActorExecution):
-        userspacegen.gather_target_repositories(None)
-        assert mocked_produce.called
-        reports = [m.report for m in mocked_produce.model_instances if isinstance(m, reporting.Report)]
-        inhibitors = [m for m in reports if 'INHIBITOR' in m.get('flags', ())]
-        assert len(inhibitors) == 1
-        assert inhibitors[0].get('title', '') == 'Cannot find required basic RHEL target repositories.'
+        userspacegen.gather_target_repositories(None, indata)
+    assert mocked_produce.called
+    reports = [m.report for m in mocked_produce.model_instances if isinstance(m, reporting.Report)]
+    inhibitors = [m for m in reports if 'inhibitor' in m.get('groups', ())]
+    assert len(inhibitors) == 1
+    assert inhibitors[0].get('title', '') == 'Cannot find required basic RHEL target repositories.'
+    # Now test the case when either of AppStream and BaseOs is not available, upgrade should be inhibited
+    mocked_produce = produce_mocked()
+    monkeypatch.setattr(userspacegen.api, 'current_actor', CurrentActorMocked())
+    monkeypatch.setattr(userspacegen.api.current_actor(), 'produce', mocked_produce)
+    monkeypatch.setattr(rhsm, 'get_available_repo_ids', lambda x: ['repoidA', 'repoidB', 'repoidC-appstream'])
+    monkeypatch.setattr(userspacegen.api, 'consume', lambda x: iter([models.TargetRepositories(
+        rhel_repos=[models.RHELTargetRepository(repoid='repoidC-appstream'),
+                    models.RHELTargetRepository(repoid='repoidA')],
+        custom_repos=[models.CustomTargetRepository(repoid='repoidCustom')])]))
+    with pytest.raises(StopActorExecution):
+        userspacegen.gather_target_repositories(None, indata)
+    reports = [m.report for m in mocked_produce.model_instances if isinstance(m, reporting.Report)]
+    inhibitors = [m for m in reports if 'inhibitor' in m.get('groups', ())]
+    assert len(inhibitors) == 1
+    assert inhibitors[0].get('title', '') == 'Cannot find required basic RHEL target repositories.'
+    mocked_produce = produce_mocked()
+    monkeypatch.setattr(userspacegen.api, 'current_actor', CurrentActorMocked())
+    monkeypatch.setattr(userspacegen.api.current_actor(), 'produce', mocked_produce)
+    monkeypatch.setattr(rhsm, 'get_available_repo_ids', lambda x: ['repoidA', 'repoidB', 'repoidC-baseos'])
+    monkeypatch.setattr(userspacegen.api, 'consume', lambda x: iter([models.TargetRepositories(
+        rhel_repos=[models.RHELTargetRepository(repoid='repoidC-baseos'),
+                    models.RHELTargetRepository(repoid='repoidA')],
+        custom_repos=[models.CustomTargetRepository(repoid='repoidCustom')])]))
+    with pytest.raises(StopActorExecution):
+        userspacegen.gather_target_repositories(None, indata)
+    reports = [m.report for m in mocked_produce.model_instances if isinstance(m, reporting.Report)]
+    inhibitors = [m for m in reports if 'inhibitor' in m.get('groups', ())]
+    assert len(inhibitors) == 1
+    assert inhibitors[0].get('title', '') == 'Cannot find required basic RHEL target repositories.'
 
 
 def mocked_consume_data():
@@ -373,5 +406,5 @@ def test_perform_ok(monkeypatch):
     assert userspacegen.api.produce.called == 3
     assert isinstance(userspacegen.api.produce.model_instances[0], models.TMPTargetRepositoriesFacts)
     assert userspacegen.api.produce.model_instances[1] == msg_target_repos
-    # this one is full of contants, so it's safe to check just the instance
+    # this one is full of constants, so it's safe to check just the instance
     assert isinstance(userspacegen.api.produce.model_instances[2], models.TargetUserSpaceInfo)

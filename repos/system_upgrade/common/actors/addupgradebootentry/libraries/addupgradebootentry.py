@@ -3,13 +3,14 @@ import re
 
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common.config import architecture
-from leapp.libraries.stdlib import api, run, CalledProcessError
-from leapp.models import BootContent
+from leapp.libraries.stdlib import api, CalledProcessError, run
+from leapp.models import BootContent, KernelCmdlineArg, TargetKernelCmdlineArgTasks
 
 
 def add_boot_entry(configs=None):
     debug = 'debug' if os.getenv('LEAPP_DEBUG', '0') == '1' else ''
-
+    enable_network = os.getenv('LEAPP_DEVEL_INITRAM_NETWORK') in ('network-manager', 'scripts')
+    ip_arg = ' ip=dhcp rd.neednet=1' if enable_network else ''
     kernel_dst_path, initram_dst_path = get_boot_file_paths()
     _remove_old_upgrade_boot_entry(kernel_dst_path, configs=configs)
     try:
@@ -20,7 +21,7 @@ def add_boot_entry(configs=None):
             '--title', 'ELevate-Upgrade-Initramfs',
             '--copy-default',
             '--make-default',
-            '--args', '{DEBUG} enforcing=0 rd.plymouth=0 plymouth.enable=0'.format(DEBUG=debug)
+            '--args', '{DEBUG}{NET} enforcing=0 rd.plymouth=0 plymouth.enable=0'.format(DEBUG=debug, NET=ip_arg)
         ]
         if configs:
             for config in configs:
@@ -33,6 +34,18 @@ def add_boot_entry(configs=None):
             # otherwise the new boot entry will not be set as default
             # See https://bugzilla.redhat.com/show_bug.cgi?id=1764306
             run(['/usr/sbin/zipl'])
+
+        if debug:
+            # The kernelopts for target kernel are generated based on the cmdline used in the upgrade initramfs,
+            # therefore, if we enabled debug above, and the original system did not have the debug kernelopt, we
+            # need to explicitly remove it from the target os boot entry.
+            # NOTE(mhecko): This will also unconditionally remove debug kernelopt if the source system used it.
+            api.produce(TargetKernelCmdlineArgTasks(to_remove=[KernelCmdlineArg(key='debug')]))
+
+        # NOTE(mmatuska): This will remove the option even if the source system had it set.
+        # However enforcing=0 shouldn't be set persistently anyway.
+        api.produce(TargetKernelCmdlineArgTasks(to_remove=[KernelCmdlineArg(key='enforcing', value='0')]))
+
     except CalledProcessError as e:
         raise StopActorExecutionError(
            'Cannot configure bootloader.',
@@ -75,6 +88,7 @@ def get_boot_file_paths():
         raise StopActorExecutionError('Could not create a GRUB boot entry for the upgrade initramfs',
                                       details={'details': 'Did not receive a message about the leapp-provided'
                                                           'kernel and initramfs'})
+    # Returning information about kernel hmac file path is needless as it is not used when adding boot entry
     return boot_content.kernel_path, boot_content.initram_path
 
 
@@ -83,17 +97,20 @@ def write_to_file(filename, content):
         f.write(content)
 
 
-def fix_grub_config_error(conf_file):
+def fix_grub_config_error(conf_file, error_type):
     with open(conf_file, 'r') as f:
         config = f.read()
 
-    # move misplaced '"' to the end
-    pattern = r'GRUB_CMDLINE_LINUX=.+?(?=GRUB|\Z)'
-    original_value = re.search(pattern, config, re.DOTALL).group()
-    parsed_value = original_value.split('"')
-    new_value = '{KEY}"{VALUE}"{END}'.format(KEY=parsed_value[0], VALUE=''.join(parsed_value[1:]).rstrip(),
-                                             END=original_value[-1])
+    if error_type == 'GRUB_CMDLINE_LINUX syntax':
+        # move misplaced '"' to the end
+        pattern = r'GRUB_CMDLINE_LINUX=.+?(?=GRUB|\Z)'
+        original_value = re.search(pattern, config, re.DOTALL).group()
+        parsed_value = original_value.split('"')
+        new_value = '{KEY}"{VALUE}"{END}'.format(KEY=parsed_value[0], VALUE=''.join(parsed_value[1:]).rstrip(),
+                                                 END=original_value[-1])
 
-    config = config.replace(original_value, new_value)
+        config = config.replace(original_value, new_value)
+        write_to_file(conf_file, config)
 
-    write_to_file(conf_file, config)
+    elif error_type == 'missing newline':
+        write_to_file(conf_file, config + '\n')

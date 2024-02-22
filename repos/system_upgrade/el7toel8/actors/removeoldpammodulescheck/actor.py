@@ -1,10 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.dialogs import Dialog
 from leapp.dialogs.components import BooleanComponent
 from leapp.models import RemovedPAMModules
-from leapp.reporting import Report, create_report
-from leapp import reporting
-from leapp.tags import IPUWorkflowTag, ChecksPhaseTag
+from leapp.reporting import create_report, Report
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 
 class RemoveOldPAMModulesCheck(Actor):
@@ -85,10 +85,10 @@ class RemoveOldPAMModulesCheck(Actor):
                 'of {0}.'.format(module)
             ),
             reporting.Severity(reporting.Severity.MEDIUM),
-            reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+            reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
             ]),
             reporting.Remediation(hint='Configure SSSD to replace {0}'.format(module)),
             reporting.RelatedResource('package', 'sssd')
@@ -107,12 +107,12 @@ class RemoveOldPAMModulesCheck(Actor):
                 'before the upgrade process can continue.'.format(module)
             ),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+            reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
             ]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.Remediation(
                 hint='Disable {0} module and switch to SSSD to recover its functionality.'.format(module)),
             reporting.RelatedResource('package', 'sssd')

@@ -3,15 +3,16 @@ import re
 
 from leapp.libraries.common.config import architecture, version
 from leapp.libraries.stdlib import api
-from leapp.models import (
-    DracutModule,
-    RequiredUpgradeInitramPackages,  # deprecated
-    TargetUserSpaceUpgradeTasks,
-    UpgradeDracutModule,  # deprecated
-    UpgradeInitramfsTasks,
-)
 from leapp.utils.deprecation import suppress_deprecation
 
+from leapp.models import (  # isort:skip
+    CopyFile,
+    RequiredUpgradeInitramPackages,  # deprecated
+    UpgradeDracutModule,  # deprecated
+    DracutModule,
+    TargetUserSpaceUpgradeTasks,
+    UpgradeInitramfsTasks
+)
 
 _REQUIRED_PACKAGES = [
     'binutils',
@@ -30,6 +31,7 @@ _REQUIRED_PACKAGES = [
     'kernel-core',
     'kernel-modules',
     'keyutils',
+    'kmod',
     'lldpad',
     'lvm2',
     'mdadm',
@@ -40,6 +42,18 @@ _REQUIRED_PACKAGES = [
     'systemd-container',
     'tar'
 ]
+
+
+def _create_initram_networking_tasks():
+    # include networking-related dracut modules
+    modules_map = {'network-manager': ('network-manager', '/etc/leapp-initram-network-manager'),
+                   'scripts': ('network', '/etc/leapp-initram-network-scripts')}
+    initram_network_chosen = os.getenv('LEAPP_DEVEL_INITRAM_NETWORK', None)
+    if initram_network_chosen in modules_map:
+        module, touch_file = modules_map[initram_network_chosen]
+        yield UpgradeInitramfsTasks(include_dracut_modules=[DracutModule(name=module)])
+        # touch expected file
+        yield TargetUserSpaceUpgradeTasks(copy_files=[CopyFile(src='/dev/null', dst=touch_file)])
 
 
 # The decorator is not effective for generators, it has to be used one level
@@ -68,6 +82,8 @@ def _create_initram_packages():
     required_pkgs = _REQUIRED_PACKAGES[:]
     if architecture.matches_architecture(architecture.ARCH_X86_64):
         required_pkgs.append('biosdevname')
+    if os.getenv('LEAPP_DEVEL_INITRAM_NETWORK', None) == 'network-manager':
+        required_pkgs.append('NetworkManager')
     if version.get_target_major_version() == '9':
         required_pkgs += ['policycoreutils', 'rng-tools']
     return (
@@ -79,3 +95,4 @@ def _create_initram_packages():
 def process():
     api.produce(*tuple(_create_dracut_modules()))
     api.produce(*_create_initram_packages())
+    api.produce(*tuple(_create_initram_networking_tasks()))

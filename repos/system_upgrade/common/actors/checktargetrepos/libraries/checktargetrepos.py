@@ -1,9 +1,8 @@
-from leapp.models import CustomTargetRepositoryFile, TargetRepositories, RHUIInfo
-from leapp.libraries.stdlib import api
 from leapp import reporting
 from leapp.libraries.common import config, rhsm
 from leapp.libraries.common.config.version import get_target_major_version
-
+from leapp.libraries.stdlib import api
+from leapp.models import CustomTargetRepositoryFile, RHUIInfo, TargetRepositories
 
 # TODO: we need to provide this path in a shared library
 CUSTOM_REPO_PATH = '/etc/leapp/files/leapp_upgrade_repositories.repo'
@@ -31,12 +30,9 @@ def process():
     target_major_version = get_target_major_version()
 
     if target_major_version == '8':
-        ipu_doc_url = (
-            'https://access.redhat.com/documentation/en-us/'
-            'red_hat_enterprise_linux/8/html-single/upgrading_to_rhel_8/index'
-        )
+        ipu_doc_url = 'https://red.ht/upgrading-rhel7-to-rhel8-main-official-doc'
     elif target_major_version == '9':
-        ipu_doc_url = ('TBA')
+        ipu_doc_url = 'https://red.ht/upgrading-rhel8-to-rhel9-main-official-doc'
 
     rhui_info = next(api.consume(RHUIInfo), None)
 
@@ -78,8 +74,8 @@ def process():
                 .format(CUSTOM_REPO_PATH, summary_ctrf)
             )),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.SANITY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.SANITY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.ExternalLink(url=ipu_doc_url, title='UPGRADING TO RHEL {}'.format(target_major_version)),
             reporting.RelatedResource('file', CUSTOM_REPO_PATH),
         ])

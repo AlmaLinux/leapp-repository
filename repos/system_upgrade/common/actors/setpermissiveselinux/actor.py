@@ -1,9 +1,9 @@
-from leapp.actors import Actor
-from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
-from leapp.models import SelinuxPermissiveDecision
-from leapp.reporting import Report, create_report
 from leapp import reporting
+from leapp.actors import Actor
 from leapp.libraries.actor.setpermissiveselinux import selinux_set_permissive
+from leapp.models import SelinuxPermissiveDecision
+from leapp.reporting import create_report, Report
+from leapp.tags import FinalizationPhaseTag, IPUWorkflowTag
 
 
 class SetPermissiveSelinux(Actor):
@@ -29,8 +29,8 @@ class SetPermissiveSelinux(Actor):
                         reporting.Title('Could not set SElinux into permissive mode'),
                         reporting.Summary('{}'.format(err_msg)),
                         reporting.Severity(reporting.Severity.HIGH),
-                        reporting.Tags([reporting.Tags.SELINUX, reporting.Tags.SECURITY]),
-                        reporting.Flags([reporting.Flags.FAILURE]),
+                        reporting.Groups([reporting.Groups.SELINUX, reporting.Groups.SECURITY]),
+                        reporting.Groups([reporting.Groups.FAILURE]),
                         reporting.RelatedResource('file', '/etc/selinux/config')
                     ])
                     self.log.critical('Could not set SElinux into permissive mode: %s.' % err_msg)

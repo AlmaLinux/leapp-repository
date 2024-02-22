@@ -1,10 +1,10 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemInfoTopic
 
 
 class DNFPluginTask(Model):
     """
-    Represents information what should DNF do with a specifiec DNF plugin
+    Represents information what should DNF do with a specific DNF plugin
     in various stages.
 
     Currently, it's possible just to disable specified DNF plugins.

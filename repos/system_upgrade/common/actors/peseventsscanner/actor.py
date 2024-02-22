@@ -2,8 +2,9 @@ import os
 import os.path
 
 from leapp.actors import Actor
-from leapp.libraries.actor.peseventsscanner import pes_events_scanner
+from leapp.libraries.actor.pes_events_scanner import process
 from leapp.models import (
+    ConsumedDataAsset,
     EnabledModules,
     InstalledRedHatSignedRPM,
     PESRpmTransactionTasks,
@@ -41,20 +42,8 @@ class PesEventsScanner(Actor):
         RpmTransactionTasks,
         ActiveVendorList,
     )
-    produces = (PESRpmTransactionTasks, RepositoriesSetupTasks, Report)
+    produces = (ConsumedDataAsset, PESRpmTransactionTasks, RepositoriesSetupTasks, Report)
     tags = (IPUWorkflowTag, FactsPhaseTag)
 
     def process(self):
-        pes_events_scanner(LEAPP_FILES_DIR, "pes-events.json")
-
-        active_vendors = []
-        for vendor_list in self.consume(ActiveVendorList):
-            active_vendors.extend(vendor_list.data)
-
-        pes_json_suffix = "_pes.json"
-        if os.path.isdir(VENDORS_DIR):
-            vendor_pesfiles = list(filter(lambda vfile: pes_json_suffix in vfile, os.listdir(VENDORS_DIR)))
-
-            for pesfile in vendor_pesfiles:
-                if pesfile[:-len(pes_json_suffix)] in active_vendors:
-                    pes_events_scanner(VENDORS_DIR, pesfile)
+        process()

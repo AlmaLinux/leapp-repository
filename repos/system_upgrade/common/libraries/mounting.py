@@ -4,14 +4,13 @@ import os
 import shutil
 from collections import namedtuple
 
-from leapp.libraries.stdlib import run, CalledProcessError, api
 from leapp.libraries.common.config import get_all_envs
 from leapp.libraries.common.config.version import get_source_major_version
-
+from leapp.libraries.stdlib import api, CalledProcessError, run
 
 # Using ALWAYS_BIND will crash the upgrade process if the file does not exist.
 # Consider instead adding an entry to the ScanFilesToCopyIntoTargetSystem actor that
-# conditionaly (only if it exists) creates CopyFile message to the TargetUserspaceCreator.
+# conditionally (only if it exists) creates CopyFile message to the TargetUserspaceCreator.
 ALWAYS_BIND = []
 
 ErrorData = namedtuple('ErrorData', ['summary', 'details'])
@@ -423,3 +422,23 @@ class OverlayMount(MountingBase):
             '-t', 'overlay', 'overlay2',
             '-o', 'lowerdir={},upperdir={},workdir={}'.format(self.source, self._upper_dir, self._work_dir)
         ]
+
+
+def mount_upgrade_iso_to_root_dir(root_dir, target_iso):
+    """
+    Context manager mounting the target RHEL ISO into the system root residing at `root_dir`.
+
+    If the `target_iso` is None no action is performed.
+
+    :param root_dir: Path to a directory containing a system root.
+    :type root_dir: str
+    :param target_iso: Description of the ISO to be mounted.
+    :type target_iso: Optional[TargetOSInstallationImage]
+    :rtype: Optional[LoopMount]
+    """
+    if not target_iso:
+        return NullMount(root_dir)
+
+    mountpoint = target_iso.mountpoint[1:]  # Strip the leading / from the absolute mountpoint
+    mountpoint_in_root_dir = os.path.join(root_dir, mountpoint)
+    return LoopMount(source=target_iso.path, target=mountpoint_in_root_dir)

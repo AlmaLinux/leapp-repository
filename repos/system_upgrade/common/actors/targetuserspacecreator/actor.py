@@ -1,20 +1,23 @@
 from leapp.actors import Actor
 from leapp.libraries.actor import userspacegen
 from leapp.libraries.common.config import get_env, version
+from leapp.models import RequiredTargetUserspacePackages  # deprecated
+from leapp.models import TMPTargetRepositoriesFacts  # deprecated
 from leapp.models import (
     CustomTargetRepositoryFile,
+    PkgManagerInfo,
+    Report,
+    RepositoriesFacts,
+    RepositoriesMapping,
     RHSMInfo,
     RHUIInfo,
-    Report,
-    RepositoriesMapping,
-    RequiredTargetUserspacePackages,  # deprecated
     StorageInfo,
+    TargetOSInstallationImage,
     TargetRepositories,
-    TargetUserSpacePreupgradeTasks,
     TargetUserSpaceInfo,
-    TMPTargetRepositoriesFacts,  # deprecated all the time
+    TargetUserSpacePreupgradeTasks,
     UsedTargetRepositories,
-    XFSPresence,
+    XFSPresence
 )
 from leapp.tags import IPUWorkflowTag, TargetTransactionFactsPhaseTag
 
@@ -36,12 +39,15 @@ class TargetUserspaceCreator(Actor):
         CustomTargetRepositoryFile,
         RHSMInfo,
         RHUIInfo,
+        RepositoriesFacts,
         RepositoriesMapping,
         RequiredTargetUserspacePackages,
         StorageInfo,
+        TargetOSInstallationImage,
         TargetRepositories,
         TargetUserSpacePreupgradeTasks,
         XFSPresence,
+        PkgManagerInfo,
     )
     produces = (TargetUserSpaceInfo, UsedTargetRepositories, Report, TMPTargetRepositoriesFacts,)
     tags = (IPUWorkflowTag, TargetTransactionFactsPhaseTag)

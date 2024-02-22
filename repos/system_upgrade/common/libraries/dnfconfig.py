@@ -1,6 +1,6 @@
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common.config.version import get_source_major_version
-from leapp.libraries.stdlib import CalledProcessError, api
+from leapp.libraries.stdlib import api, CalledProcessError
 
 
 def get_leapp_packages():
@@ -12,7 +12,7 @@ def get_leapp_packages():
     installed.
 
     The snactor RPM doesn't have to be installed, but if so, we have to take
-    care about that too as well to preven broken dnf transaction.
+    care about that too as well to prevent broken dnf transaction.
     """
     # TODO: should we set the seatbelt and exclude leapp RPMs from the target
     # system too?
@@ -30,15 +30,21 @@ def _strip_split(data, sep, maxsplit=-1):
     return [item.strip() for item in data.split(sep, maxsplit)]
 
 
-def _get_main_dump(context):
+def _get_main_dump(context, disable_plugins):
     """
     Return the dnf configuration dump of main options for the given context.
 
     Returns the list of lines after the line with "[main]" section
     """
 
+    cmd = ['dnf', 'config-manager', '--dump']
+
+    if disable_plugins:
+        for plugin in disable_plugins:
+            cmd += ['--disableplugin', plugin]
+
     try:
-        data = context.call(['dnf', 'config-manager', '--dump'], split=True)['stdout']
+        data = context.call(cmd, split=True)['stdout']
     except CalledProcessError as e:
         api.current_logger().error('Cannot obtain the dnf configuration')
         raise StopActorExecutionError(
@@ -73,18 +79,18 @@ def _get_main_dump(context):
     return output_data
 
 
-def _get_excluded_pkgs(context):
+def _get_excluded_pkgs(context, disable_plugins):
     """
     Return the list of excluded packages for DNF in the given context.
 
     It shouldn't be used on the source system. It is expected this functions
     is called only in the target userspace container or on the target system.
     """
-    pkgs = _strip_split(_get_main_dump(context).get('exclude', ''), ',')
+    pkgs = _strip_split(_get_main_dump(context, disable_plugins).get('exclude', ''), ',')
     return [i for i in pkgs if i]
 
 
-def _set_excluded_pkgs(context, pkglist):
+def _set_excluded_pkgs(context, pkglist, disable_plugins):
     """
     Configure DNF to exclude packages in the given list
 
@@ -92,6 +98,10 @@ def _set_excluded_pkgs(context, pkglist):
     """
     exclude = 'exclude={}'.format(','.join(pkglist))
     cmd = ['dnf', 'config-manager', '--save', '--setopt', exclude]
+
+    if disable_plugins:
+        for plugin in disable_plugins:
+            cmd += ['--disableplugin', plugin]
 
     try:
         context.call(cmd)
@@ -101,7 +111,7 @@ def _set_excluded_pkgs(context, pkglist):
     api.current_logger().debug('The DNF configuration has been updated to exclude leapp packages.')
 
 
-def exclude_leapp_rpms(context):
+def exclude_leapp_rpms(context, disable_plugins):
     """
     Ensure the leapp RPMs are excluded from any DNF transaction.
 
@@ -112,8 +122,8 @@ def exclude_leapp_rpms(context):
     So user will have to drop these packages from the exclude after the
     upgrade.
     """
-    to_exclude = list(set(_get_excluded_pkgs(context) + get_leapp_packages()))
-    _set_excluded_pkgs(context, to_exclude)
+    to_exclude = list(set(_get_excluded_pkgs(context, disable_plugins) + get_leapp_packages()))
+    _set_excluded_pkgs(context, to_exclude, disable_plugins)
 
 
 def enable_repository(context, reponame):

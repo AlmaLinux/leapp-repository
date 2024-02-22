@@ -38,7 +38,7 @@ def check_interface_scripts(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([reporting.Tags.DRIVERS]),
+            reporting.Groups([reporting.Groups.DRIVERS]),
             reporting.Severity(reporting.Severity.MEDIUM),
             reporting.Remediation(hint=hint),
             reporting.ExternalLink(
@@ -66,7 +66,7 @@ def check_include_directive(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([reporting.Tags.SERVICES]),
+            reporting.Groups([reporting.Groups.SERVICES]),
             reporting.Severity(reporting.Severity.MEDIUM),
         ] + [reporting.RelatedResource('file', f) for f in facts.include_files]
 
@@ -91,7 +91,7 @@ def check_printcap_directive(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([reporting.Tags.SERVICES]),
+            reporting.Groups([reporting.Groups.SERVICES]),
             reporting.Severity(reporting.Severity.LOW),
             reporting.RelatedResource('file', '/etc/cups/cupsd.conf'),
             reporting.RelatedResource('file', '/etc/cups/cups-files.conf')
@@ -118,7 +118,7 @@ def check_env_directives(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([reporting.Tags.SERVICES]),
+            reporting.Groups([reporting.Groups.SERVICES]),
             reporting.Severity(reporting.Severity.LOW),
             reporting.RelatedResource('file', '/etc/cups/cupsd.conf'),
             reporting.RelatedResource('file', '/etc/cups/cups-files.conf')
@@ -135,10 +135,10 @@ def check_certkey_directives(facts, report_func):
     :param obj facts: model object containing info about CUPS configuration
     :param func report_func: creates report
     """
-    title = ('ServerKey/ServerCertificate directives are substitued '
+    title = ('ServerKey/ServerCertificate directives are substituted '
              'by ServerKeychain directive')
     summary = (
-        'The directives were substitued by ServerKeychain directive, '
+        'The directives were substituted by ServerKeychain directive, '
         'which now takes a directory as value (/etc/cups/ssl is default). '
         'The previous directives took a file as value. '
         'The migration script will copy the files specified in '
@@ -150,8 +150,8 @@ def check_certkey_directives(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([reporting.Tags.SERVICES,
-                            reporting.Tags.AUTHENTICATION]),
+            reporting.Groups([reporting.Groups.SERVICES,
+                              reporting.Groups.AUTHENTICATION]),
             reporting.Severity(reporting.Severity.MEDIUM),
             reporting.RelatedResource('file', '/etc/cups/cups-files.conf')
         ]
@@ -185,10 +185,10 @@ def check_digest_values(facts, report_func):
         args = [
             reporting.Title(title),
             reporting.Summary(summary),
-            reporting.Tags([
-                reporting.Tags.AUTHENTICATION,
-                reporting.Tags.SECURITY,
-                reporting.Tags.SERVICES,
+            reporting.Groups([
+                reporting.Groups.AUTHENTICATION,
+                reporting.Groups.SECURITY,
+                reporting.Groups.SERVICES,
             ]),
             reporting.Severity(reporting.Severity.MEDIUM),
             reporting.RelatedResource('file', '/etc/cups/cupsd.conf')

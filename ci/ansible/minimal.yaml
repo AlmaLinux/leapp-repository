@@ -1,0 +1,6 @@
+---
+- name: Minimal configuration
+  hosts: all
+  become: yes
+  roles:
+    - minimal

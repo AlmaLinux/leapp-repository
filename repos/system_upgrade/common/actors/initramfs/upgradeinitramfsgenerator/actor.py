@@ -1,13 +1,15 @@
 from leapp.actors import Actor
 from leapp.libraries.actor import upgradeinitramfsgenerator
+from leapp.models import RequiredUpgradeInitramPackages  # deprecated
+from leapp.models import UpgradeDracutModule  # deprecated
 from leapp.models import (
     BootContent,
-    RequiredUpgradeInitramPackages,  # deprecated
+    FIPSInfo,
+    TargetOSInstallationImage,
     TargetUserSpaceInfo,
     TargetUserSpaceUpgradeTasks,
-    UpgradeDracutModule,  # deprecated
     UpgradeInitramfsTasks,
-    UsedTargetRepositories,
+    UsedTargetRepositories
 )
 from leapp.tags import InterimPreparationPhaseTag, IPUWorkflowTag
 
@@ -26,7 +28,9 @@ class UpgradeInitramfsGenerator(Actor):
 
     name = 'upgrade_initramfs_generator'
     consumes = (
+        FIPSInfo,
         RequiredUpgradeInitramPackages,  # deprecated
+        TargetOSInstallationImage,
         TargetUserSpaceInfo,
         TargetUserSpaceUpgradeTasks,
         UpgradeDracutModule,  # deprecated

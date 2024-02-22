@@ -48,9 +48,9 @@ def inhibit_if_multiple_zipl_rescue_entries_present(bootloader_config):
             reporting.Title('Multiple rescue boot entries present in the bootloader configuration.'),
             reporting.Summary(summary.format(ZIPL_CONFIG_PATH, rescue_entries_text)),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.BOOT]),
+            reporting.Groups([reporting.Groups.BOOT]),
             reporting.Remediation(hint='Remove rescue boot entries from the configuration and leave just one.'),
-            reporting.Flags([reporting.Flags.INHIBITOR])
+            reporting.Groups([reporting.Groups.INHIBITOR])
         ])
 
 
@@ -58,7 +58,7 @@ def extract_kernel_version(kernel_img_path):
     """
     Extracts the kernel version out of the given image path.
 
-    The extraction logic is designed to closely mimick the logic Zipl configuration to BLS
+    The extraction logic is designed to closely mimic the logic Zipl configuration to BLS
     conversion script works, so that it is possible to identify the possible issues with kernel
     images.
 
@@ -67,7 +67,7 @@ def extract_kernel_version(kernel_img_path):
     :rtype: str
     """
 
-    # Mimick bash substitution used in the conversion script, see:
+    # Mimic bash substitution used in the conversion script, see:
     # https://github.com/ibm-s390-linux/s390-tools/blob/b5604850ab66f862850568a37404faa647b5c098/scripts/zipl-switch-to-blscfg#L168
     if 'vmlinuz-' in kernel_img_path:
         fragments = kernel_img_path.rsplit('/vmlinuz-', 1)
@@ -118,10 +118,10 @@ def inhibit_if_entries_share_kernel_version(bootloader_config):
             reporting.Title('Boot entries sharing the same kernel version found.'),
             reporting.Summary(summary.format(ZIPL_CONFIG_PATH, problematic_entries_details)),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Tags([reporting.Tags.BOOT]),
+            reporting.Groups([reporting.Groups.BOOT]),
             reporting.Remediation(
                 hint='Remove boot entries sharing the same kernel version from the configuration and leave just one.'),
-            reporting.Flags([reporting.Flags.INHIBITOR])
+            reporting.Groups([reporting.Groups.INHIBITOR])
         ])
 
 

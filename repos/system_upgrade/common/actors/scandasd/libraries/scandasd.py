@@ -18,8 +18,8 @@ def process():
         copy_files = [CopyFile(src=DASD_CONF)]
         api.produce(UpgradeInitramfsTasks(include_files=[DASD_CONF]))
     else:
-        api.current_logger().warning(
-            "The {} file has not been discovered. DASD not used?"
+        api.current_logger().info(
+            "The {} file has not been discovered. DASD not used."
             .format(DASD_CONF)
         )
     api.produce(TargetUserSpaceUpgradeTasks(copy_files=copy_files, install_rpms=['s390utils-core']))

@@ -7,6 +7,7 @@ disable=
  no-member,
  no-name-in-module,
  raising-bad-type,
+ redundant-keyword-arg,  # it's one or the other, this one is not so bad at all
 # "W" Warnings for stylistic problems or minor programming issues
  no-absolute-import,
  arguments-differ,
@@ -51,7 +52,9 @@ disable=
  use-a-generator,  # cannot be modified because of Python2 support
  consider-using-with,  # on bunch spaces we cannot change that...
  duplicate-string-formatting-argument,  # TMP: will be fixed in close future
- consider-using-f-string  # sorry, not gonna happen, still have to support py2
+ consider-using-f-string,  # sorry, not gonna happen, still have to support py2
+ use-dict-literal,
+ redundant-u-string-prefix  # still have py2 to support
 
 [FORMAT]
 # Maximum number of characters on a single line.

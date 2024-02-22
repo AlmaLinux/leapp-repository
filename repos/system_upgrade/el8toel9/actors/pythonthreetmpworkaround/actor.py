@@ -1,10 +1,10 @@
 import os
 
 from leapp.actors import Actor
-from leapp.libraries.stdlib import CalledProcessError, api, run
-from leapp.models import TransactionCompleted
-from leapp.tags import RPMUpgradePhaseTag, IPUWorkflowTag
 from leapp.exceptions import StopActorExecutionError
+from leapp.libraries.stdlib import api, CalledProcessError, run
+from leapp.models import TransactionCompleted
+from leapp.tags import IPUWorkflowTag, RPMUpgradePhaseTag
 
 
 class PythonThreeTmpWorkaround(Actor):
@@ -13,7 +13,7 @@ class PythonThreeTmpWorkaround(Actor):
 
     During the RPM upgrade the /usr/bin/python3 is removed because of problem
     in alternatives. The fix requires new builds of python36 on RHEL8, python3
-    on RHEL 9 ans alternatives on both systems. Once the internal repositories
+    on RHEL 9 and alternatives on both systems. Once the internal repositories
     are updated, we can drop this. If the /usr/bin/python3 file exists,
     do nothing.
     """

@@ -1,0 +1,25 @@
+galaxy_info:
+  author: AlmaLinux OS Community
+  description: Install and configure Docker CE Engine
+  company: AlmaLinux OS Foundation
+
+  license: GPL-3.0-or-later
+
+  min_ansible_version: 2.11
+
+  platforms:
+  - name: EL
+    versions:
+    - 7
+    - 8
+    - 9
+
+  galaxy_tags:
+    - docker
+    - el7
+    - el8
+    - el9
+    - almalinux
+
+dependencies:
+    - minimal

@@ -125,7 +125,7 @@ def get_selinux_modules():
         return ([], [], [])
 
     for (name, priority) in modules:
-        # Udica templates should not be transfered, we only need a list of their
+        # Udica templates should not be transferred, we only need a list of their
         # names and priorities so that we can reinstall their latest verisions
         if name in UDICA_TEMPLATES:
             template_list.append(
@@ -227,6 +227,10 @@ def get_selinux_customizations():
         # can be reapplied after the upgrade
         semanage = run(["semanage", "export"], split=True)
         for line in semanage.get("stdout", []):
+            # Skip "deleteall" commands to avoid removing customizations
+            # done by package scripts during upgrade
+            if " -D" in line:
+                continue
             for setype in removed_types:
                 if setype in line:
                     semanage_removed.append(line)

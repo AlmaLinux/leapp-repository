@@ -1,0 +1,3 @@
+---
+# defaults file for docker-ce
+docker_ce_repo_checksum: sha512:1de0b99cbb427e974144f226451711dc491caef6b1256cb599ff307a687ba2d7dd959a016d4e4cfdd4acbd83423ba1f78fa89db61bab35351e35f1152aedaf5c

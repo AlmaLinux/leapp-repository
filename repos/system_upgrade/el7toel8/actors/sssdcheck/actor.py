@@ -1,11 +1,10 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.models import SSSDConfig
-from leapp import reporting
-from leapp.reporting import Report, create_report
-from leapp.tags import IPUWorkflowTag, ChecksPhaseTag
+from leapp.reporting import create_report, Report
+from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
-
-COMMON_REPORT_TAGS = [reporting.Tags.AUTHENTICATION, reporting.Tags.SECURITY]
+COMMON_REPORT_TAGS = [reporting.Groups.AUTHENTICATION, reporting.Groups.SECURITY]
 
 related = [
     reporting.RelatedResource('package', 'sssd'),
@@ -50,28 +49,28 @@ class SSSDCheck(Actor):
     def reportLocalProvider(self, domain):
         create_report([
             reporting.Title('SSSD Domain "%s": local provider is no longer '
-                            'supported and the domain will be ignored.' % domain),
+                            'supported and the domain will be ignored.' % domain.name),
             reporting.Summary('Local provider is no longer supported.'),
-            reporting.Tags(COMMON_REPORT_TAGS),
+            reporting.Groups(COMMON_REPORT_TAGS),
             reporting.Severity(reporting.Severity.MEDIUM)
         ] + related)
 
     def reportRemovedOption(self, domain, option):
         create_report([
             reporting.Title('SSSD Domain "%s": option %s has no longer '
-                            'any effect' % (domain, option)),
+                            'any effect' % (domain.name, option)),
             reporting.Summary('Option %s was removed and it will be ignored.' % option),
-            reporting.Tags(COMMON_REPORT_TAGS),
+            reporting.Groups(COMMON_REPORT_TAGS),
             reporting.Severity(reporting.Severity.MEDIUM)
         ] + related)
 
     def reportSudoRegexp(self, domain):
         create_report([
             reporting.Title('SSSD Domain "%s": sudo rules containing wildcards '
-                            'will stop working.' % domain),
+                            'will stop working.' % domain.name),
             reporting.Summary('Default value of ldap_sudo_include_regexp changed '
                               'from true to false for performance reason.'),
-            reporting.Tags(COMMON_REPORT_TAGS),
+            reporting.Groups(COMMON_REPORT_TAGS),
             reporting.Remediation(
                 hint='If you use sudo rules with wildcards, set this option to true explicitly.'
             ),

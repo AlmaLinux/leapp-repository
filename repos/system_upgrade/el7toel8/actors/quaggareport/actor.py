@@ -5,8 +5,8 @@ from leapp.reporting import create_report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
 COMMON_REPORT_TAGS = [
-    reporting.Tags.NETWORK,
-    reporting.Tags.SERVICES
+    reporting.Groups.NETWORK,
+    reporting.Groups.SERVICES
 ]
 
 
@@ -32,18 +32,15 @@ class QuaggaReport(Actor):
             create_report([
                 reporting.Title('Babeld is not available in FRR'),
                 reporting.ExternalLink(
-                    url='https://access.redhat.com/'
-                        'documentation/en-us/red_hat_enterprise_linux/8/html/'
-                        'configuring_and_managing_networking/setting-your-rou'
-                        'ting-protocols_configuring-and-managing-networking',
+                    url='https://red.ht/rhel-8-configuring-routing-protocols',
                     title='Setting routing protocols in RHEL8'),
                 reporting.Summary(
                     'babeld daemon which was a part of quagga implementation in RHEL7 '
                     'is not available in RHEL8 in FRR due to licensing issues.'
                 ),
                 reporting.Severity(reporting.Severity.HIGH),
-                reporting.Tags(COMMON_REPORT_TAGS),
-                reporting.Flags([reporting.Flags.INHIBITOR]),
+                reporting.Groups(COMMON_REPORT_TAGS),
+                reporting.Groups([reporting.Groups.INHIBITOR]),
                 reporting.Remediation(hint='Please use RIP, OSPF or EIGRP instead of Babel')
             ])
         else:

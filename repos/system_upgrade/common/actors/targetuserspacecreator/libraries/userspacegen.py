@@ -1,5 +1,7 @@
 import itertools
 import os
+import re
+import shutil
 
 from leapp import reporting
 from leapp.exceptions import StopActorExecution, StopActorExecutionError
@@ -9,12 +11,15 @@ from leapp.libraries.common.config import get_env, get_product_type
 from leapp.libraries.common.config.version import get_target_major_version
 from leapp.libraries.stdlib import api, CalledProcessError, config, run
 from leapp.models import RequiredTargetUserspacePackages  # deprecated
-from leapp.models import TMPTargetRepositoriesFacts  # deprecated
+from leapp.models import TMPTargetRepositoriesFacts  # deprecated all the time
 from leapp.models import (
     CustomTargetRepositoryFile,
+    PkgManagerInfo,
+    RepositoriesFacts,
     RHSMInfo,
     RHUIInfo,
     StorageInfo,
+    TargetOSInstallationImage,
     TargetRepositories,
     TargetUserSpaceInfo,
     TargetUserSpacePreupgradeTasks,
@@ -30,7 +35,7 @@ from leapp.utils.deprecation import suppress_deprecation
 # # (0.) consume process input data
 # # 1. prepare the first container, to be able to obtain repositories for the
 # #    target system (this is extra neededwhen rhsm is used, but not reason to
-# #    do such thing only when rhsm is used. Be persistant here
+# #    do such thing only when rhsm is used. Be persistent here
 # # 2. gather target repositories that should AND can be used
 # #    - basically here is the main thing that is PITA; I started
 # #      the refactoring but realized that it needs much more changes because
@@ -49,7 +54,9 @@ from leapp.utils.deprecation import suppress_deprecation
 # Issue: #486
 
 PROD_CERTS_FOLDER = 'prod-certs'
+GPG_CERTS_FOLDER = 'rpm-gpg'
 PERSISTENT_PACKAGE_CACHE_DIR = '/var/lib/leapp/persistent_package_cache'
+DEDICATED_LEAPP_PART_URL = 'https://access.redhat.com/solutions/7011704'
 
 
 def _check_deprecated_rhsm_skip():
@@ -60,7 +67,7 @@ def _check_deprecated_rhsm_skip():
     if get_env('LEAPP_DEVEL_SKIP_RHSM', '0') == '1':
         api.current_logger().warning(
             'The LEAPP_DEVEL_SKIP_RHSM has been deprecated. Use'
-            ' LEAPP_NO_RHSM istead or use the --no-rhsm option for'
+            ' LEAPP_NO_RHSM instead or use the --no-rhsm option for'
             ' leapp. as well custom repofile has not been defined.'
             ' Please read documentation about new "skip rhsm" solution.'
         )
@@ -117,9 +124,12 @@ class _InputData(object):
 
 def _restore_persistent_package_cache(userspace_dir):
     if get_env('LEAPP_DEVEL_USE_PERSISTENT_PACKAGE_CACHE', None) == '1':
-        if os.path.exists(PERSISTENT_PACKAGE_CACHE_DIR):
-            with mounting.NspawnActions(base_dir=userspace_dir) as target_context:
-                target_context.copytree_to(PERSISTENT_PACKAGE_CACHE_DIR, '/var/cache/dnf')
+        if not os.path.exists(PERSISTENT_PACKAGE_CACHE_DIR):
+            return
+        dst_cache = os.path.join(userspace_dir, 'var', 'cache', 'dnf')
+        if os.path.exists(dst_cache):
+            run(['rm', '-rf', dst_cache])
+        shutil.move(PERSISTENT_PACKAGE_CACHE_DIR, dst_cache)
     # We always want to remove the persistent cache here to unclutter the system
     run(['rm', '-rf', PERSISTENT_PACKAGE_CACHE_DIR])
 
@@ -128,9 +138,87 @@ def _backup_to_persistent_package_cache(userspace_dir):
     if get_env('LEAPP_DEVEL_USE_PERSISTENT_PACKAGE_CACHE', None) == '1':
         # Clean up any dead bodies, just in case
         run(['rm', '-rf', PERSISTENT_PACKAGE_CACHE_DIR])
-        if os.path.exists(os.path.join(userspace_dir, 'var', 'cache', 'dnf')):
-            with mounting.NspawnActions(base_dir=userspace_dir) as target_context:
-                target_context.copytree_from('/var/cache/dnf', PERSISTENT_PACKAGE_CACHE_DIR)
+        src_cache = os.path.join(userspace_dir, 'var', 'cache', 'dnf')
+        if os.path.exists(src_cache):
+            shutil.move(src_cache, PERSISTENT_PACKAGE_CACHE_DIR)
+
+
+def _the_nogpgcheck_option_used():
+    return get_env('LEAPP_NOGPGCHECK', False) == '1'
+
+
+def _get_path_to_gpg_certs(target_major_version):
+    target_product_type = get_product_type('target')
+    certs_dir = target_major_version
+    # only beta is special in regards to the GPG signing keys
+    if target_product_type == 'beta':
+        certs_dir = '{}beta'.format(target_major_version)
+    return os.path.join(api.get_common_folder_path(GPG_CERTS_FOLDER), certs_dir)
+
+
+def _import_gpg_keys(context, install_root_dir, target_major_version):
+    certs_path = _get_path_to_gpg_certs(target_major_version)
+    # Import the RHEL X+1 GPG key to be able to verify the installation of initial packages
+    try:
+        # Import also any other keys provided by the customer in the same directory
+        for certname in os.listdir(certs_path):
+            cmd = ['rpm', '--root', install_root_dir, '--import', os.path.join(certs_path, certname)]
+            context.call(cmd, callback_raw=utils.logging_handler)
+    except CalledProcessError as exc:
+        raise StopActorExecutionError(
+            message=(
+                'Unable to import GPG certificates to install RHEL {} userspace packages.'
+                .format(target_major_version)
+            ),
+            details={'details': str(exc), 'stderr': exc.stderr}
+        )
+
+
+def _handle_transaction_err_msg_size_old(err):
+    # NOTE(pstodulk): This is going to be removed in future!
+
+    article_section = 'Generic case'
+    xfs_info = next(api.consume(XFSPresence), XFSPresence())
+    if xfs_info.present and xfs_info.without_ftype:
+        article_section = 'XFS ftype=0 case'
+
+    message = ('There is not enough space on the file system hosting /var/lib/leapp directory '
+               'to extract the packages.')
+    details = {'hint': "Please follow the instructions in the '{}' section of the article at: "
+                       "link: https://access.redhat.com/solutions/5057391".format(article_section)}
+
+    raise StopActorExecutionError(message=message, details=details)
+
+
+def _handle_transaction_err_msg_size(err):
+    if get_env('LEAPP_OVL_LEGACY', '0') == '1':
+        _handle_transaction_err_msg_size_old(err)
+        return  # not needed actually as the above function raises error, but for visibility
+    NO_SPACE_STR = 'more space needed on the'
+
+    # Disk Requirements:
+    #   At least <size> more space needed on the <path> filesystem.
+    #
+    missing_space = [line.strip() for line in err.stderr.split('\n') if NO_SPACE_STR in line]
+    size_str = re.match(r'At least (.*) more space needed', missing_space[0]).group(1)
+    message = 'There is not enough space on the file system hosting /var/lib/leapp.'
+    hint = (
+        'Increase the free space on the filesystem hosting'
+        ' /var/lib/leapp by {} at minimum. It is suggested to provide'
+        ' reasonably more space to be able to perform all planned actions'
+        ' (e.g. when 200MB is missing, add 1700MB or more).\n\n'
+        'It is also a good practice to create dedicated partition'
+        ' for /var/lib/leapp when more space is needed, which can be'
+        ' dropped after the system upgrade is fully completed'
+        ' For more info, see: {}'
+        .format(size_str, DEDICATED_LEAPP_PART_URL)
+    )
+    # we do not want to confuse customers by the orig msg speaking about
+    # missing space on '/'. Skip the Disk Requirements section.
+    # The information is part of the hint.
+    details = {'hint': hint}
+
+    raise StopActorExecutionError(message=message, details=details)
 
 
 def prepare_target_userspace(context, userspace_dir, enabled_repos, packages):
@@ -139,26 +227,28 @@ def prepare_target_userspace(context, userspace_dir, enabled_repos, packages):
     """
     _backup_to_persistent_package_cache(userspace_dir)
 
-    target_major_version = get_target_major_version()
     run(['rm', '-rf', userspace_dir])
     _create_target_userspace_directories(userspace_dir)
-    with mounting.BindMount(
-        source=userspace_dir, target=os.path.join(context.base_dir, 'el{}target'.format(target_major_version))
-    ):
+
+    target_major_version = get_target_major_version()
+    install_root_dir = '/el{}target'.format(target_major_version)
+    with mounting.BindMount(source=userspace_dir, target=os.path.join(context.base_dir, install_root_dir.lstrip('/'))):
         _restore_persistent_package_cache(userspace_dir)
+        if not _the_nogpgcheck_option_used():
+            _import_gpg_keys(context, install_root_dir, target_major_version)
 
         repos_opt = [['--enablerepo', repo] for repo in enabled_repos]
         repos_opt = list(itertools.chain(*repos_opt))
-        cmd = ['dnf',
-               'install',
-               '-y',
-               '--nogpgcheck',
-               '--setopt=module_platform_id=platform:el{}'.format(target_major_version),
-               '--setopt=keepcache=1',
-               '--releasever', api.current_actor().configuration.version.target,
-               '--installroot', '/el{}target'.format(target_major_version),
-               '--disablerepo', '*'
-               ] + repos_opt + packages
+        cmd = ['dnf', 'install', '-y']
+        if _the_nogpgcheck_option_used():
+            cmd.append('--nogpgcheck')
+        cmd += [
+            '--setopt=module_platform_id=platform:el{}'.format(target_major_version),
+            '--setopt=keepcache=1',
+            '--releasever', api.current_actor().configuration.version.target,
+            '--installroot', install_root_dir,
+            '--disablerepo', '*'
+            ] + repos_opt + packages
         if config.is_verbose():
             cmd.append('-v')
         if rhsm.skip_rhsm():
@@ -166,10 +256,30 @@ def prepare_target_userspace(context, userspace_dir, enabled_repos, packages):
         try:
             context.call(cmd, callback_raw=utils.logging_handler)
         except CalledProcessError as exc:
-            raise StopActorExecutionError(
-                message='Unable to install RHEL {} userspace packages.'.format(target_major_version),
-                details={'details': str(exc), 'stderr': exc.stderr}
-            )
+            message = 'Unable to install RHEL {} userspace packages.'.format(target_major_version)
+            details = {'details': str(exc), 'stderr': exc.stderr}
+
+            if 'more space needed on the' in exc.stderr:
+                # The stderr contains this error summary:
+                # Disk Requirements:
+                #   At least <size> more space needed on the <path> filesystem.
+                _handle_transaction_err_msg_size(exc)
+
+            # If a proxy was set in dnf config, it should be the reason why dnf
+            # failed since leapp does not support updates behind proxy yet.
+            for manager_info in api.consume(PkgManagerInfo):
+                if manager_info.configured_proxies:
+                    details['details'] = ("DNF failed to install userspace packages, likely due to the proxy "
+                                          "configuration detected in the YUM/DNF configuration file.")
+
+            # Similarly if a proxy was set specifically for one of the repositories.
+            for repo_facts in api.consume(RepositoriesFacts):
+                for repo_file in repo_facts.repositories:
+                    if any(repo_data.proxy and repo_data.enabled for repo_data in repo_file.data):
+                        details['details'] = ("DNF failed to install userspace packages, likely due to the proxy "
+                                              "configuration detected in a repository configuration file.")
+
+            raise StopActorExecutionError(message=message, details=details)
 
 
 def _get_all_rhui_pkgs():
@@ -193,7 +303,7 @@ def _get_all_rhui_pkgs():
     return pkgs
 
 
-def _get_files_owned_by_rpms(context, dirpath, pkgs=None):
+def _get_files_owned_by_rpms(context, dirpath, pkgs=None, recursive=False):
     """
     Return the list of file names inside dirpath owned by RPMs.
 
@@ -202,9 +312,25 @@ def _get_files_owned_by_rpms(context, dirpath, pkgs=None):
 
     In case the pkgs param is None or empty, do not filter any specific rpms.
     Otherwise return filenames that are owned by any pkg in the given list.
+
+    If the recursive param is set to True, all files owned by a package in the
+    directory tree starting at dirpath are returned. Otherwise, only the
+    files within dirpath are checked.
     """
+
     files_owned_by_rpms = []
-    for fname in os.listdir(context.full_path(dirpath)):
+
+    file_list = []
+    searchdir = context.full_path(dirpath)
+    if recursive:
+        for root, _, files in os.walk(searchdir):
+            for filename in files:
+                relpath = os.path.relpath(os.path.join(root, filename), searchdir)
+                file_list.append(relpath)
+    else:
+        file_list = os.listdir(searchdir)
+
+    for fname in file_list:
         try:
             result = context.call(['rpm', '-qf', os.path.join(dirpath, fname)])
         except CalledProcessError:
@@ -215,7 +341,55 @@ def _get_files_owned_by_rpms(context, dirpath, pkgs=None):
             continue
         api.current_logger().debug('Found the file owned by an rpm: {}.'.format(fname))
         files_owned_by_rpms.append(fname)
+
     return files_owned_by_rpms
+
+
+def _copy_certificates(context, target_userspace):
+    """
+    Copy the needed cetificates into the container, but preserve original ones
+
+    Some certificates are already installed in the container and those are
+    default certificates for the target OS, so we preserve these.
+    """
+
+    target_pki = os.path.join(target_userspace, 'etc', 'pki')
+    backup_pki = os.path.join(target_userspace, 'etc', 'pki.backup')
+
+    with mounting.NspawnActions(base_dir=target_userspace) as target_context:
+        files_owned_by_rpms = _get_files_owned_by_rpms(target_context, '/etc/pki', recursive=True)
+        api.current_logger().debug('Files owned by rpms: {}'.format(' '.join(files_owned_by_rpms)))
+
+    run(['mv', target_pki, backup_pki])
+    context.copytree_from('/etc/pki', target_pki)
+
+    for filepath in files_owned_by_rpms:
+        src_path = os.path.join(backup_pki, filepath)
+        dst_path = os.path.join(target_pki, filepath)
+
+        # Resolve and skip any broken symlinks
+        is_broken_symlink = False
+        while os.path.islink(src_path):
+            # The symlink points to a path relative to the target userspace so
+            # we need to readjust it
+            next_path = os.path.join(target_userspace, os.readlink(src_path)[1:])
+            if not os.path.exists(next_path):
+                is_broken_symlink = True
+
+                # The path original path of the broken symlink in the container
+                report_path = os.path.join(target_pki, os.path.relpath(src_path, backup_pki))
+                api.current_logger().warn('File {} is a broken symlink!'.format(report_path))
+                break
+
+            src_path = next_path
+
+        if is_broken_symlink:
+            continue
+
+        run(['rm', '-rf', dst_path])
+        parent_dir = os.path.dirname(dst_path)
+        run(['mkdir', '-p', parent_dir])
+        run(['cp', '-a', src_path, dst_path])
 
 
 def _prep_repository_access(context, target_userspace):
@@ -227,14 +401,14 @@ def _prep_repository_access(context, target_userspace):
     backup_yum_repos_d = os.path.join(target_etc, 'yum.repos.d.backup')
 
     # Copy RHN data independent from RHSM config
+    # TODO(rprilipskii): do we still need to copy RHN data with rollout repositories excluded?
     if os.path.isdir('/etc/sysconfig/rhn'):
         run(['rm', '-rf', os.path.join(target_etc, 'sysconfig/rhn')])
         context.copytree_from('/etc/sysconfig/rhn', os.path.join(target_etc, 'sysconfig/rhn'))
 
     if not rhsm.skip_rhsm():
-        run(['rm', '-rf', os.path.join(target_etc, 'pki')])
+        _copy_certificates(context, target_userspace)
         run(['rm', '-rf', os.path.join(target_etc, 'rhsm')])
-        context.copytree_from('/etc/pki', os.path.join(target_etc, 'pki'))
         context.copytree_from('/etc/rhsm', os.path.join(target_etc, 'rhsm'))
     # NOTE: we cannot just remove the original target yum.repos.d dir
     # as e.g. in case of RHUI a special RHUI repofiles are installed by a pkg
@@ -310,7 +484,7 @@ def _get_product_certificate_path():
     try:
         cert = prod_certs[architecture][target_product_type]
     except KeyError as e:
-        raise StopActorExecutionError(message=('Failed to determine what certificate to use for {}.'.format(e)))
+        raise StopActorExecutionError(message='Failed to determine what certificate to use for {}.'.format(e))
 
     cert_path = os.path.join(certs_dir, target_version, cert)
     if not os.path.isfile(cert_path):
@@ -328,8 +502,8 @@ def _get_product_certificate_path():
                 'Expected certificate: {cert} with path {path} but it could not be found.{additional}'.format(
                     cert=cert, path=cert_path, additional=additional_summary)
             ),
-            reporting.Tags([reporting.Tags.REPOSITORY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.REPOSITORY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.Severity(reporting.Severity.HIGH),
             reporting.Remediation(hint=(
                 'Set the corresponding target os version in the LEAPP_DEVEL_TARGET_RELEASE environment variable for'
@@ -385,8 +559,8 @@ def _inhibit_on_duplicate_repos(repofiles):
             .format(list_separator_fmt, list_separator_fmt.join(duplicates))
         ),
         reporting.Severity(reporting.Severity.MEDIUM),
-        reporting.Tags([reporting.Tags.REPOSITORY]),
-        reporting.Flags([reporting.Flags.INHIBITOR]),
+        reporting.Groups([reporting.Groups.REPOSITORY]),
+        reporting.Groups([reporting.Groups.INHIBITOR]),
         reporting.Remediation(hint=(
             'Remove the duplicate repository definitions or change repoids of'
             ' conflicting repositories on the system to prevent the'
@@ -426,16 +600,19 @@ def _get_rhsm_available_repoids(context):
     # TODO: very similar thing should happens for all other repofiles in container
     #
     repoids = rhsm.get_available_repo_ids(context)
-    if not repoids or len(repoids) < 2:
+    # NOTE(ivasilev) For the moment at least AppStream and BaseOS repos are required. While we are still
+    # contemplating on what can be a generic solution to checking this, let's introduce a minimal check for
+    # at-least-one-appstream and at-least-one-baseos among present repoids
+    if not repoids or all("baseos" not in ri for ri in repoids) or all("appstream" not in ri for ri in repoids):
         reporting.create_report([
             reporting.Title('Cannot find required basic RHEL target repositories.'),
             reporting.Summary(
                 'This can happen when a repository ID was entered incorrectly either while using the --enablerepo'
                 ' option of leapp or in a third party actor that produces a CustomTargetRepositoryMessage.'
             ),
-            reporting.Tags([reporting.Tags.REPOSITORY]),
+            reporting.Groups([reporting.Groups.REPOSITORY]),
             reporting.Severity(reporting.Severity.HIGH),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.Remediation(hint=(
                 'It is required to have RHEL repositories on the system'
                 ' provided by the subscription-manager unless the --no-rhsm'
@@ -521,7 +698,7 @@ def gather_target_repositories(context, indata):
             else:
                 # TODO: We shall report that the RHEL repos that we deem necessary for
                 # the upgrade are not available; but currently it would just print bunch of
-                # data everytime as we maps EUS and other repositories as well. But these
+                # data every time as we maps EUS and other repositories as well. But these
                 # do not have to be necessary available on the target system in the time
                 # of the upgrade. Let's skip it for now until it's clear how we will deal
                 # with it.
@@ -540,8 +717,8 @@ def gather_target_repositories(context, indata):
                 ' or, when the leapp --no-rhsm option has been used, no custom repositories have been'
                 ' passed on the command line.'
             ),
-            reporting.Tags([reporting.Tags.REPOSITORY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.REPOSITORY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.Severity(reporting.Severity.HIGH),
             reporting.Remediation(hint=(
                 'Ensure the system is correctly registered with the subscription manager and that'
@@ -571,8 +748,8 @@ def gather_target_repositories(context, indata):
                 'The following repositories IDs could not be found in the target configuration:\n'
                 '- {}\n'.format('\n- '.join(missing_custom_repoids))
             ),
-            reporting.Tags([reporting.Tags.REPOSITORY]),
-            reporting.Flags([reporting.Flags.INHIBITOR]),
+            reporting.Groups([reporting.Groups.REPOSITORY]),
+            reporting.Groups([reporting.Groups.INHIBITOR]),
             reporting.Severity(reporting.Severity.HIGH),
             reporting.ExternalLink(
                 # TODO: How to handle different documentation links for each version?
@@ -593,7 +770,7 @@ def _install_custom_repofiles(context, custom_repofiles):
     """
     Install the required custom repository files into the container.
 
-    The repostory files are copied from the host into the /etc/yum.repos.d
+    The repository files are copied from the host into the /etc/yum.repos.d
     directory into the container.
 
     :param context: the container where the repofiles should be copied
@@ -676,21 +853,26 @@ def perform():
 
     indata = _InputData()
     prod_cert_path = _get_product_certificate_path()
+    reserve_space = overlaygen.get_recommended_leapp_free_space(_get_target_userspace())
     with overlaygen.create_source_overlay(
             mounts_dir=constants.MOUNTS_DIR,
             scratch_dir=constants.SCRATCH_DIR,
             storage_info=indata.storage_info,
-            xfs_info=indata.xfs_info) as overlay:
+            xfs_info=indata.xfs_info,
+            scratch_reserve=reserve_space) as overlay:
         with overlay.nspawn() as context:
-            target_repoids = _gather_target_repositories(context, indata, prod_cert_path)
-            _create_target_userspace(context, indata.packages, indata.files, target_repoids)
-            # TODO: this is tmp solution as proper one needs significant refactoring
-            target_repo_facts = repofileutils.get_parsed_repofiles(context)
-            api.produce(TMPTargetRepositoriesFacts(repositories=target_repo_facts))
-            # ## TODO ends here
-            api.produce(UsedTargetRepositories(
-                repos=[UsedTargetRepository(repoid=repo) for repo in target_repoids]))
-            api.produce(TargetUserSpaceInfo(
-                path=_get_target_userspace(),
-                scratch=constants.SCRATCH_DIR,
-                mounts=constants.MOUNTS_DIR))
+            # Mount the ISO into the scratch container
+            target_iso = next(api.consume(TargetOSInstallationImage), None)
+            with mounting.mount_upgrade_iso_to_root_dir(overlay.target, target_iso):
+                target_repoids = _gather_target_repositories(context, indata, prod_cert_path)
+                _create_target_userspace(context, indata.packages, indata.files, target_repoids)
+                # TODO: this is tmp solution as proper one needs significant refactoring
+                target_repo_facts = repofileutils.get_parsed_repofiles(context)
+                api.produce(TMPTargetRepositoriesFacts(repositories=target_repo_facts))
+                # ## TODO ends here
+                api.produce(UsedTargetRepositories(
+                    repos=[UsedTargetRepository(repoid=repo) for repo in target_repoids]))
+                api.produce(TargetUserSpaceInfo(
+                    path=_get_target_userspace(),
+                    scratch=constants.SCRATCH_DIR,
+                    mounts=constants.MOUNTS_DIR))

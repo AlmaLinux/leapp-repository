@@ -1,21 +1,6 @@
-import json
-
-from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import fetch
 from leapp.libraries.stdlib import api
 from leapp.models import DeviceDriverDeprecationData, DeviceDriverDeprecationEntry
-
-
-def _load_file():
-    try:
-        return json.loads(
-            fetch.read_or_fetch('device_driver_deprecation_data.json'))
-    except ValueError:
-        raise StopActorExecutionError(
-            'The device driver deprecation data file is invalid: file does not contain a valid JSON object.',
-            details={'hint': ('Read documentation at the following link for more'
-                              ' information about how to retrieve the valid file:'
-                              ' https://access.redhat.com/articles/3664871')})
 
 
 def process():
@@ -26,11 +11,19 @@ def process():
     """
     # This is how you get the StringEnum choices value, so we can filter based on the model definition
     supported_device_types = set(DeviceDriverDeprecationEntry.device_type.serialize()['choices'])
+
+    data_file_name = 'device_driver_deprecation_data.json'
+    deprecation_data = fetch.load_data_asset(api.current_actor(),
+                                             data_file_name,
+                                             asset_fulltext_name='Device driver deprecation data',
+                                             docs_url='',
+                                             docs_title='')
+
     api.produce(
         DeviceDriverDeprecationData(
             entries=[
                 DeviceDriverDeprecationEntry(**entry)
-                for entry in _load_file()['data']
+                for entry in deprecation_data['data']
                 if entry.get('device_type') in supported_device_types
             ]
         )

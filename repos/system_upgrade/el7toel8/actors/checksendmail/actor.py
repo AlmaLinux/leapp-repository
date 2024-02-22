@@ -1,13 +1,13 @@
+from leapp import reporting
 from leapp.actors import Actor
 from leapp.libraries.actor import checksendmail
 from leapp.libraries.common.rpms import has_package
 from leapp.libraries.common.tcpwrappersutils import config_applies_to_daemon
 from leapp.models import InstalledRedHatSignedRPM, SendmailMigrationDecision, TcpWrappersFacts
-from leapp.reporting import Report, create_report
-from leapp import reporting
+from leapp.reporting import create_report, Report
 from leapp.tags import ChecksPhaseTag, IPUWorkflowTag
 
-COMMON_REPORT_TAGS = [reporting.Tags.SERVICES, reporting.Tags.EMAIL]
+COMMON_REPORT_TAGS = [reporting.Groups.SERVICES, reporting.Groups.EMAIL]
 
 related = [
               reporting.RelatedResource('file', f) for f in checksendmail.get_conf_files()
@@ -41,8 +41,8 @@ class CheckSendmail(Actor):
                          'sendmail from the /etc/hosts.[allow|deny].'
                 ),
                 reporting.Severity(reporting.Severity.HIGH),
-                reporting.Tags(COMMON_REPORT_TAGS + [reporting.Tags.NETWORK]),
-                reporting.Flags([reporting.Flags.INHIBITOR])
+                reporting.Groups(COMMON_REPORT_TAGS + [reporting.Groups.NETWORK]),
+                reporting.Groups([reporting.Groups.INHIBITOR])
             ] + related)
 
             return
@@ -55,7 +55,7 @@ class CheckSendmail(Actor):
                     'configuration files for correctness.'
                 ),
                 reporting.Severity(reporting.Severity.LOW),
-                reporting.Tags(COMMON_REPORT_TAGS)
+                reporting.Groups(COMMON_REPORT_TAGS)
             ] + related)
 
             self.produce(SendmailMigrationDecision(migrate_files=migrate_files))

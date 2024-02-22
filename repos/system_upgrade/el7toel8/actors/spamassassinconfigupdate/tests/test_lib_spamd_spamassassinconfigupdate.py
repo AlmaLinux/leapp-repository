@@ -5,7 +5,6 @@ from leapp.libraries.common.spamassassinutils import SYSCONFIG_SPAMASSASSIN, SYS
 from leapp.libraries.common.testutils import make_IOError, make_OSError
 from leapp.models import SpamassassinFacts
 
-
 # The tests for _drop_ssl_version and _drop_daemonize_option are overly
 # restrictive in what output they accept - namely regarding whitespace and
 # order of the options; don't be afraid to change the tests if they start
@@ -240,7 +239,7 @@ def test_rewrite_spamd_config():
 
 
 def test_rewrite_spamd_config_service_overriden():
-    # If the service is overriden, the service type (simple/forking) remains
+    # If the service is overridden, the service type (simple/forking) remains
     # the same after upgrade. So we must not remove the -d option.
     facts = SpamassassinFacts(spamd_ssl_version='sslv3', service_overriden=True)
     content = '# Options to spamd\n' \

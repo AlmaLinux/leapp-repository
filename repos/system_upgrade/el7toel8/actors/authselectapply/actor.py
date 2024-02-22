@@ -1,10 +1,9 @@
-from leapp.actors import Actor
-from leapp.libraries.stdlib import run, CalledProcessError
-from leapp.models import Authselect, AuthselectDecision
 from leapp import reporting
-from leapp.reporting import Report, create_report
-from leapp.tags import IPUWorkflowTag, ApplicationsPhaseTag
-
+from leapp.actors import Actor
+from leapp.libraries.stdlib import CalledProcessError, run
+from leapp.models import Authselect, AuthselectDecision
+from leapp.reporting import create_report, Report
+from leapp.tags import ApplicationsPhaseTag, IPUWorkflowTag
 
 resources = [
     reporting.RelatedResource('package', 'authselect'),
@@ -42,13 +41,13 @@ class AuthselectApply(Actor):
                 reporting.Title('Authselect call failed'),
                 reporting.Summary(str(err)),
                 reporting.Severity(reporting.Severity.MEDIUM),
-                reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+                reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
                 ]),
-                reporting.Flags([
-                    reporting.Flags.FAILURE
+                reporting.Groups([
+                    reporting.Groups.FAILURE
                 ])
             ] + resources)  # pylint: disable-msg=too-many-arguments
             return
@@ -64,9 +63,9 @@ class AuthselectApply(Actor):
                 'System was converted to authselect with the '
                 'following call: "{}"'.format(' '.join(command))
             ),
-            reporting.Tags([
-                    reporting.Tags.AUTHENTICATION,
-                    reporting.Tags.SECURITY,
-                    reporting.Tags.TOOLS
+            reporting.Groups([
+                    reporting.Groups.AUTHENTICATION,
+                    reporting.Groups.SECURITY,
+                    reporting.Groups.TOOLS
                 ])
         ] + resources)  # pylint: disable-msg=too-many-arguments

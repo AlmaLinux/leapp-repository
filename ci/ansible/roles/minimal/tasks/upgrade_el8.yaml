@@ -1,0 +1,8 @@
+---
+# Upgrade the system
+- name: Upgrade the system
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: yes
+  register: upgrade_status

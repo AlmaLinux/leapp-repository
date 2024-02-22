@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemFactsTopic
 
 
@@ -8,7 +8,7 @@ class CPUInfo(Model):
 
     The model currently doesn't represent all information about cpus could
     provide on the machine. Just part of them, in case any other attributes
-    will be neded, the model can be extended.
+    will be needed, the model can be extended.
 
     The provided info is aggregated - like from lscpu command. Expecting all
     CPUs are same on the machine (at least for now).
@@ -32,8 +32,8 @@ class CPUInfo(Model):
     # byte_order = fields.StringEnum(['Little Endian', 'Big Endian'])
     # """ Byte order of the CPU: 'Little Endian' or 'Big Endian' """
 
-    # flags = fields.List(fields.String(), default=[])
-    # """ Specifies flags/features of the CPU. """
+    flags = fields.List(fields.String(), default=[])
+    """ Specifies flags/features of the CPU. """
 
     # hypervisor = fields.Nullable(fields.String())
     # hypervisor_vendor = fields.Nullable(fields.String())

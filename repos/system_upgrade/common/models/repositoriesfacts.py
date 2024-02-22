@@ -1,4 +1,4 @@
-from leapp.models import Model, fields
+from leapp.models import fields, Model
 from leapp.topics import SystemFactsTopic
 from leapp.utils.deprecation import deprecated
 
@@ -13,6 +13,7 @@ class RepositoryData(Model):
     mirrorlist = fields.Nullable(fields.String())
     enabled = fields.Boolean(default=True)
     additional_fields = fields.Nullable(fields.String())
+    proxy = fields.Nullable(fields.String())
 
 
 class RepositoryFile(Model):
