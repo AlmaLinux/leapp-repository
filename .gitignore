@@ -115,6 +115,7 @@ ENV/
 
 # visual studio code configuration
 .vscode
+*.code-workspace
 
 # pycharm
 .idea
