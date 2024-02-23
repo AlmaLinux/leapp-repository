@@ -260,12 +260,12 @@ done;
 %doc README.md
 %license LICENSE
 %dir %{_sysconfdir}/leapp/transaction
-%dir %{_sysconfdir}/leapp/files
+# %dir %{_sysconfdir}/leapp/files
 %dir %{leapp_datadir}
 %dir %{repositorydir}
 %dir %{custom_repositorydir}
 %dir %{leapp_python_sitelib}/leapp/cli/commands
-%config %{_sysconfdir}/leapp/files/*
+# %config %{_sysconfdir}/leapp/files/*
 %{_sysconfdir}/leapp/repos.d/*
 %{_sysconfdir}/leapp/transaction/*
 %{repositorydir}/*
