@@ -40,6 +40,7 @@ WORK_DIR="$HOME"
 NEW_LEAPP_NAME="leapp-repository-$BRANCH"
 NEW_LEAPP_DIR="$WORK_DIR/$NEW_LEAPP_NAME/"
 LEAPP_PATH='/usr/share/leapp-repository/repositories/'
+LEAPP_GPG_PATH='/etc/leapp/repos.d/system_upgrade/common/files/rpm-gpg'
 EXCLUDE_PATH='
 /usr/share/leapp-repository/repositories/system_upgrade/el7toel8/files/bundled-rpms
 /usr/share/leapp-repository/repositories/system_upgrade/el7toel8/files
@@ -55,6 +56,11 @@ EXCLUDE_PATH='
 echo "RHEL_MAJOR_VERSION=$RHEL_MAJOR_VERSION"
 echo "WORK_DIR=$WORK_DIR"
 echo "EXCLUDED_PATHS=$EXCLUDE_PATH"
+
+echo "Preserve GPG keys if any"
+for major in 8 9; do
+    test -e ${LEAPP_GPG_PATH}/${major} && mv ${LEAPP_GPG_PATH}/${major} ${WORK_DIR}/
+done
 
 
 echo 'Remove old files'
@@ -73,8 +79,8 @@ do
     fi
 done
 
-echo "Download new tarball from https://github.com/$USER/leapp-repository/archive/$BRANCH/leapp-repository-$BRANCH.tar.gz" 
-curl -s -L https://github.com/$USER/leapp-repository/archive/$BRANCH/leapp-repository-$BRANCH.tar.gz | tar -xz -C $WORK_DIR/
+echo "Download new tarball from https://github.com/$USER/leapp-repository/archive/$BRANCH/leapp-repository-$BRANCH.tar.gz"
+curl -s -L https://github.com/$USER/leapp-repository/archive/$BRANCH/leapp-repository-$BRANCH.tar.gz | tar -xmz -C $WORK_DIR/ || exit 1
 
 echo 'Deleting files as in spec file'
 rm -rf $NEW_LEAPP_DIR/repos/common/actors/testactor
@@ -89,15 +95,23 @@ else
 fi
 
 echo 'Copy new data to system'
-cp -r $NEW_LEAPP_DIR/repos/* $LEAPP_PATH
+cp -r $NEW_LEAPP_DIR/repos/* $LEAPP_PATH || exit 1
 
 for DIRECTORY in $(find $LEAPP_PATH -mindepth 1 -maxdepth 1 -type d);
 do
     REPOSITORY=$(basename $DIRECTORY)
     if ! [ -e /etc/leapp/repos.d/$REPOSITORY ];then
         echo "Enabling repository $REPOSITORY"
-        ln -s $LEAPP_PATH/$REPOSITORY /etc/leapp/repos.d/$REPOSITORY
+        ln -s $LEAPP_PATH/$REPOSITORY /etc/leapp/repos.d/$REPOSITORY || exit 1
     fi
 done
 
+echo "Restore GPG keys if any"
+for major in 8 9; do
+    rm -rf ${LEAPP_GPG_PATH}/${major}
+    test -e ${WORK_DIR}/${major} && mv ${WORK_DIR}/${major} ${LEAPP_GPG_PATH}/
+done
+
 rm -rf $NEW_LEAPP_DIR
+
+exit 0
