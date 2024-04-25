@@ -32,6 +32,7 @@ class FilterRpmTransactionTasks(Actor):
         to_remove = set()
         to_keep = set()
         to_upgrade = set()
+        to_reinstall = set()
         modules_to_enable = {}
         modules_to_reset = {}
         for event in self.consume(RpmTransactionTasks, PESRpmTransactionTasks):
@@ -39,13 +40,14 @@ class FilterRpmTransactionTasks(Actor):
             to_install.update(event.to_install)
             to_remove.update(installed_pkgs.intersection(event.to_remove))
             to_keep.update(installed_pkgs.intersection(event.to_keep))
+            to_reinstall.update(installed_pkgs.intersection(event.to_reinstall))
             modules_to_enable.update({'{}:{}'.format(m.name, m.stream): m for m in event.modules_to_enable})
             modules_to_reset.update({'{}:{}'.format(m.name, m.stream): m for m in event.modules_to_reset})
 
         to_remove.difference_update(to_keep)
 
         # run upgrade for the rest of RH signed pkgs which we do not have rule for
-        to_upgrade = installed_pkgs - (to_install | to_remove)
+        to_upgrade = installed_pkgs - (to_install | to_remove | to_reinstall)
 
         self.produce(FilteredRpmTransactionTasks(
             local_rpms=list(local_rpms),
@@ -53,5 +55,6 @@ class FilterRpmTransactionTasks(Actor):
             to_remove=list(to_remove),
             to_keep=list(to_keep),
             to_upgrade=list(to_upgrade),
+            to_reinstall=list(to_reinstall),
             modules_to_reset=list(modules_to_reset.values()),
             modules_to_enable=list(modules_to_enable.values())))
