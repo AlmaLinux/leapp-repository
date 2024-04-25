@@ -129,6 +129,7 @@ def compute_pkg_changes_between_consequent_releases(source_installed_pkgs,
     logger = api.current_logger()
     # Start with the installed packages and modify the set according to release events
     target_pkgs = set(source_installed_pkgs)
+    pkgs_to_reinstall = set()
 
     release_events = [e for e in events if e.to_release == release]
 
@@ -165,9 +166,12 @@ def compute_pkg_changes_between_consequent_releases(source_installed_pkgs,
                 target_pkgs = target_pkgs.difference(event.in_pkgs)
                 target_pkgs = target_pkgs.union(event.out_pkgs)
 
+            if (event.action == Action.REINSTALLED and is_any_in_pkg_present):
+                pkgs_to_reinstall = pkgs_to_reinstall.union(event.in_pkgs)
+
         pkgs_to_demodularize = pkgs_to_demodularize.difference(event.in_pkgs)
 
-    return (target_pkgs, pkgs_to_demodularize)
+    return (target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall)
 
 
 def remove_undesired_events(events, relevant_to_releases):
@@ -233,15 +237,18 @@ def compute_packages_on_target_system(source_pkgs, events, releases):
             did_processing_cross_major_version = True
             pkgs_to_demodularize = {pkg for pkg in target_pkgs if pkg.modulestream}
 
-        target_pkgs, pkgs_to_demodularize = compute_pkg_changes_between_consequent_releases(target_pkgs, events,
-                                                                                            release, seen_pkgs,
-                                                                                            pkgs_to_demodularize)
+        target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall = compute_pkg_changes_between_consequent_releases
+        (
+            target_pkgs, events,
+            release, seen_pkgs,
+            pkgs_to_demodularize
+        )
         seen_pkgs = seen_pkgs.union(target_pkgs)
 
     demodularized_pkgs = {Package(pkg.name, pkg.repository, None) for pkg in pkgs_to_demodularize}
     demodularized_target_pkgs = target_pkgs.difference(pkgs_to_demodularize).union(demodularized_pkgs)
 
-    return (demodularized_target_pkgs, pkgs_to_demodularize)
+    return (demodularized_target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall)
 
 
 def compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize):
@@ -496,7 +503,8 @@ def process():
     events = remove_undesired_events(events, releases)
 
     # Apply events - compute what packages should the target system have
-    target_pkgs, pkgs_to_demodularize = compute_packages_on_target_system(source_pkgs, events, releases)
+    # TODO: bring back the reinstallation of packages
+    target_pkgs, pkgs_to_demodularize, pkgs_to_reinstall = compute_packages_on_target_system(source_pkgs, events, releases)
 
     # Packages coming out of the events have PESID as their repository, however, we need real repoid
     target_pkgs = replace_pesids_with_repoids_in_packages(target_pkgs, repoids_of_source_pkgs)
@@ -512,4 +520,5 @@ def process():
     # Compare the packages on source system and the computed packages on target system and determine what to install
     rpm_tasks = compute_rpm_tasks_from_pkg_set_diff(source_pkgs, target_pkgs, pkgs_to_demodularize)
     if rpm_tasks:
+        rpm_tasks.to_reinstall = pkgs_to_reinstall
         api.produce(rpm_tasks)

@@ -58,6 +58,7 @@ class Action(IntEnum):
     MERGED = 5
     MOVED = 6
     RENAMED = 7
+    REINSTALLED = 8
 
 
 def get_pes_events(pes_json_directory, pes_json_filename):

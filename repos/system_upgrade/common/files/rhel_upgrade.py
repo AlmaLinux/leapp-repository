@@ -184,6 +184,7 @@ class RhelUpgradeCommand(dnf.cli.Command):
         to_install = self.plugin_data['pkgs_info']['to_install']
         to_remove = self.plugin_data['pkgs_info']['to_remove']
         to_upgrade = self.plugin_data['pkgs_info']['to_upgrade']
+        to_reinstall = self.plugin_data['pkgs_info']['to_reinstall']
 
         # Modules to enable
         self._process_entities(entities=[available_modules_to_enable],
@@ -196,6 +197,9 @@ class RhelUpgradeCommand(dnf.cli.Command):
         self._process_entities(entities=to_install, op=self.base.install, entity_name='Package')
         # Packages to be upgraded
         self._process_entities(entities=to_upgrade, op=self.base.upgrade, entity_name='Package')
+        # Packages to be reinstalled
+        self._process_entities(entities=to_reinstall, op=self.base.reinstall, entity_name='Package')
+
         self.base.distro_sync()
 
         if self.opts.tid[0] == 'check':
