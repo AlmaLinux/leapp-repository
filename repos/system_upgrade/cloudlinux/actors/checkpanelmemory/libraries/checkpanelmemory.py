@@ -17,12 +17,20 @@ required_memory = {
     CPANEL_NAME: 2048 * 1024,  # 2 Gb
 }
 
+# The kernel subtracts memory pages used for its own overhead from the total
+# memory reported to userspace. The subtracted amount varies depending on a
+# variety of factors, but based on a few samples, it seems to use somewhere
+# between 50-75 MiB on a 2 GiB machine, not counting memory reserved for the
+# crash kernel.  Allow for a little more than this to be missing from the total
+# before this check is considered a failure.
+ALLOWABLE_OVERHEAD = 96 * 1024  # 96 MiB
+
 
 def _check_memory(panel, mem_info):
     msg = {}
 
     min_req = required_memory[panel]
-    is_ok = mem_info.mem_total >= min_req
+    is_ok = mem_info.mem_total >= min_req - ALLOWABLE_OVERHEAD
     msg = {} if is_ok else {"detected": mem_info.mem_total, "minimal_req": min_req}
 
     return msg
