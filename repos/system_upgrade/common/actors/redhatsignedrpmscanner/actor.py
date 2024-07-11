@@ -18,7 +18,8 @@ VENDOR_SIGS = {
     'cloudlinux': ['8c55a6628608cb71'],
     'almalinux': ['51d6647ec21ad6ea',
                   'd36cb86cb86b3716',
-                  '2ae81e8aced7258b'],
+                  '2ae81e8aced7258b',
+                  '429785e181b961a5'], # ELevate
     'rocky': ['15af5dac6d745a60',
               '702d426d350d275d'],
     'ol': ['72f97b74ec551f03',
