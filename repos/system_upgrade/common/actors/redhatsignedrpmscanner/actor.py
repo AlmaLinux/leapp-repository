@@ -15,7 +15,8 @@ VENDOR_SIGS = {
                '4eb84e71f2ee9d55',
                'a963bbdbf533f4fa',
                '6c7cb6ef305d49d6'],
-    'cloudlinux': ['8c55a6628608cb71'],
+    'cloudlinux': ['8c55a6628608cb71',
+                   'd07bf2a08d50eb66'], # TuxCare
     'almalinux': ['51d6647ec21ad6ea',
                   'd36cb86cb86b3716',
                   '2ae81e8aced7258b',
