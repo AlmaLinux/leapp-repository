@@ -29,7 +29,7 @@ def get_current_kernel_release():
     """
     Get the release of the current kernel as a string.
     """
-    return api.current_actor().configuration.kernel.split('-')[1]
+    return api.current_actor().configuration.kernel.split('-')[1].rsplit('.', 1)[0]
 
 
 def get_current_kernel_evr():
@@ -78,7 +78,7 @@ def get_newest_evr(pkgs):
     """
     if not pkgs:
         return None
-    rpms_evr = _get_pkgs_evr(pkgs)
+    rpms_evr = [ ('', pkg.version, pkg.release) for pkg in pkgs ]
 
     newest_evr = rpms_evr.pop()
     for pkg in rpms_evr:
