@@ -11,7 +11,7 @@ sudo yum update -y
 
 Install `elevate-release` package with the project repo and GPG key.
 
-`sudo yum install -y http://repo.almalinux.org/elevate/elevate-release-latest-el7.noarch.rpm`
+`sudo yum install -y http://repo.almalinux.org/elevate/elevate-release-latest-el$(rpm --eval %rhel).noarch.rpm`
 
 Install leapp packages and migration data for the OS you want to upgrade. Possible options are:
   - leapp-data-almalinux
