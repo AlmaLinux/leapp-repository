@@ -295,12 +295,44 @@ def get_firewalls_status():
     )
 
 
+# The SecureBoot variable of the EFI global variable namespace. When read via
+# efivarfs, the content consists of 4 bytes of attributes followed by the value
+# (1 byte: 1 - enabled, 0 - disabled).
+SECURE_BOOT_EFIVAR_PATH = '/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c'
+
+
+def _read_efivar(path):
+    with open(path, 'rb') as f:
+        return bytearray(f.read())
+
+
+def _is_secure_boot_enabled():
+    """
+    Determine whether Secure Boot is enabled.
+
+    The EFI variable is read directly to not depend on the mokutil utility,
+    which does not have to be installed on the system.
+
+    :returns: True or False, or None when the state cannot be determined
+    """
+    try:
+        data = _read_efivar(SECURE_BOOT_EFIVAR_PATH)
+    except (IOError, OSError) as e:
+        api.current_logger().debug('Cannot determine the Secure Boot state: {}'.format(e))
+        return None
+    if len(data) < 5:
+        api.current_logger().debug('Cannot determine the Secure Boot state: unexpected content of the EFI variable.')
+        return None
+    return data[4] == 1
+
+
 def get_firmware():
     firmware = 'efi' if os.path.isdir('/sys/firmware/efi') else 'bios'
+    secureboot_enabled = _is_secure_boot_enabled() if firmware == 'efi' else None
     if architecture.matches_architecture(architecture.ARCH_PPC64LE):
         ppc64le_opal = bool(os.path.isdir('/sys/firmware/opal/'))
-        return FirmwareFacts(firmware=firmware, ppc64le_opal=ppc64le_opal)
-    return FirmwareFacts(firmware=firmware)
+        return FirmwareFacts(firmware=firmware, ppc64le_opal=ppc64le_opal, secureboot_enabled=secureboot_enabled)
+    return FirmwareFacts(firmware=firmware, secureboot_enabled=secureboot_enabled)
 
 
 @aslist
